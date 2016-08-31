@@ -12,146 +12,24 @@ import shutil
 import logging
 import subprocess
 import os
+import unittest
+sys.dont_write_bytecode = True
 
+from nrw_python_utils import utils3_5
 
-def get_args_template():
-    """
-    Template for argument parsing; dont import this, by the way
-    requires argparse
-    """
-    parser = argparse.ArgumentParser(
-        description="Given regions from riboSnag, assembles the mapped reads")
-    parser.add_argument("seed_dir", action="store",
-                        help="path to roboSnag results directory")
-    parser.add_argument("-F", "--fastq1", dest='fastq1', action="store",
-                        help="forward fastq reads, can be compressed",
-                        type=str, default="")
-    parser.add_argument("-R", "--fastq2", dest='fastq2', action="store",
-                        help="reverse fastq reads, can be compressed",
-                        type=str, default="")
-    parser.add_argument("-S", "--fastq_single", dest='fastqS', action="store",
-                        help="single fastq reads", type=str, default="")
-    parser.add_argument("-n", "--experiment_name", dest='exp_name',
-                        action="store",
-                        help="prefix for results files; default: %(default)s",
-                        default="riboSeed", type=str)
-    parser.add_argument("-m", "--method_for_map", dest='method', action="store",
-                        help="availible mappers: smalt; default: %(default)s",
-                        default='smalt', type=str)
-    parser.add_argument("-c", "--cores", dest='cores', action="store",
-                        default=1, type=int,
-                        help="cores for multiprocessing workers" +
-                        "; default: %(default)s")
-    parser.add_argument("-r", "--reference_genome", dest='reference_genome',
-                        action="store", default='', type=str,
-                        help="fasta reference genome, used for estimating " +
-                        "insert sizes, QUAST, and SPAdes")
-    parser.add_argument("-o", "--output", dest='output', action="store",
-                        help="output directory; " +
-                        "default: %(default)s", default=os.getcwd(), type=str)
-    parser.add_argument("--paired_inference", dest='paired_inference',
-                        action="store_true", default=False,
-                        help="if --paired_inference, mapped read's " +
-                        "pairs are included; default: %(default)s")
-    parser.add_argument("--subtract", dest='subtract', action="store_true",
-                        default=False, help="if --subtract, reads aligned " +
-                        "to each reference will not be aligned to future " +
-                        "iterations.  Probably you shouldnt do this" +
-                        "unless you really happen to want to")
-    parser.add_argument("--keep_unmapped", dest='keep_unmapped',
-                        action="store_true", default=False,
-                        help="if --keep_unmapped fastqs are generated " +
-                        "containing the unmapped reads; default: %(default)s")
-    parser.add_argument("--ref_as_contig", dest='ref_as_contig', action="store",
-                        default="", type=str,
-                        help="if 'trusted', SPAdes will  use the seed " +
-                        "sequences as a --trusted-contig; if 'untrusted', " +
-                        "SPAdes will treat as --untrusted-contig. if '', " +
-                        "seeds will not be used during assembly. " +
-                        "See SPAdes docs; default: %(default)s")
-    parser.add_argument("--temps", dest='temps', action="store_true",
-                        default=False,
-                        help="if --temps, intermediate files will be " +
-                        "kept; default: %(default)s")
-    parser.add_argument("-i", "--iterations", dest='iterations', action="store",
-                        default=2, type=int,
-                        help="if iterations>1, multiple seedings will occur after\
-                        assembly of seed regions ; default: %(default)s")
-    parser.add_argument("-v", "--verbosity", dest='verbosity', action="store",
-                        default=2, type=int,
-                        help="1 = debug(), 2 = info(), 3 = warning(), " +
-                        "4 = error() and 5 = critical(); default: %(default)s")
-    parser.add_argument("--DEBUG", dest='DEBUG', action="store_true",
-                        default=False,
-                        help="if --DEBUG, test data will be " +
-                        "used; default: %(default)s")
-    parser.add_argument("--force", dest='force', action="store_true",
-                        default=False,
-                        help="if --force, existing results dirs will be " +
-                        "used; default: %(default)s")
-    parser.add_argument("--noclobber", dest='noclobber', action="store_true",
-                        default=False,
-                        help="if --noclobber, results dirs will be overwritten, " +
-                        "not deleted and written fresh; default: %(default)s")
-    parser.add_argument("--smalt_scoring", dest='smalt_scoring', action="store",
-                        default="match=1,subst=-4,gapopen=-4,gapext=-3",
-                        help="submit custom smalt scoring via the smalt -S " +
-                        "scorespec option; default: %(default)s")
-    ##TODO  Make these check a config file
-    parser.add_argument("--spades_exe", dest="spades_exe",
-                        action="store", default="spades.py",
-                        help="Path to spades executable; default: %(default)s")
-    parser.add_argument("--samtools_exe", dest="samtools_exe",
-                        action="store", default="samtools",
-                        help="Path to bwa executable; default: %(default)s")
-    parser.add_argument("--smalt_exe", dest="smalt_exe",
-                        action="store", default="smalt",
-                        help="Path to smalt executable; default: %(default)s")
-    parser.add_argument("--quast_exe", dest="quast_exe",
-                        action="store", default="quast.py",
-                        help="Path to quast executable; default: %(default)s")
-    args = parser.parse_args()
-    return(args)
-
-#def set_up_logging_given_numeric_verbosity(verbosity, outfile):
-def set_up_logging(verbosity, outfile, name):
-    """
-    Set up logging a la pyani, with
-    a little help from:
-    https://aykutakin.wordpress.com/2013/08/06/logging-to-console-and-file-in-python/
-    requires logging, os, sys, time
-    logs debug level to file, and [verbosity] level to stderr
-    return a logger object
-    """
-    import logging
-    # levels = ["debug", "info", "warning", "error", "critical"]
-    logger = logging.getLogger(str(name + ": %s" %
-                               time.asctime()))
-    if (verbosity*10) not in range(10, 60, 10):
-        raise ValueError('Invalid log level: %s' % verbosity)
-    # setting root level; otherwisse, only logs warining and up
-    # setting root level; otherwisse, only logs warining and up
-    # logging.basicConfig(level=logging.DEBUG)
-    logger.setLevel(logging.DEBUG)
-    # create console handler and set level to given verbosity
-    console_err = logging.StreamHandler(sys.stderr)
-    console_err.setLevel(level=(verbosity *10))
-    console_err_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    console_err.setFormatter(console_err_formatter)
-    logger.addHandler(console_err)
-    # create debug file handler and set level to debug
-    try:
-        logfile_handler = logging.FileHandler(outfile, "w")
-        logfile_handler.setLevel(logging.DEBUG)
-        logfile_handler_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-        logfile_handler.setFormatter(logfile_handler_formatter)
-        logger.addHandler(logfile_handler)
-    except:
-        logger.error("Could not open {0} for logging".format(outfile))
-        sys.exit(1)
-    logger.info("Initializing logger")
-    logger.debug("logging at level {0}".format(verbosity))
-    return(logger)
+@unittest.skipIf((sys.system_info[0] != 3) or (sys.system_info[1] < 5), "Subprocess.call, among otherthings wont run if you try this with les than python 3.5")
+class utils3_5TestCase(unittest.TestCase):
+    def test_set_up_root_logging(self):
+        """
+        This checks that set_up_root_logging ouputs a file with the
+        given verbosity. 
+        """
+        logfile = "test_log.txt"
+        test_logger = utils3_5.set_up_root_logging(3, logfile)
+        self.assertEqual('hello', 'world')
+        # check that s.split fails when the separator is not a string
+        with self.assertRaises(TypeError):
+            s.split(2)
 
 def set_up_root_logging(verbosity, outfile):
     """derived from set_up_logging; had problem where functions in modules
@@ -637,3 +515,6 @@ def cleanup_output_to_csv(infile, accession_pattern='(?P<accession>[A-Z _\d]*\.\
     results_annotated.to_csv(open(output_path_csv, "w"))
     print("wrote final csv to %s" % output_path_csv)
 #%%
+
+if __name__ == '__main__':
+    unittest.main()
