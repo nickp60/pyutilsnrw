@@ -15,9 +15,9 @@ import os
 import unittest
 sys.dont_write_bytecode = True
 
-from nrw_python_utils import utils3_5
 
 @unittest.skipIf((sys.system_info[0] != 3) or (sys.system_info[1] < 5), "Subprocess.call, among otherthings wont run if you try this with les than python 3.5")
+from pyutilsnrw import utils3_5
 class utils3_5TestCase(unittest.TestCase):
     def test_set_up_root_logging(self):
         """
