@@ -4,16 +4,22 @@ Created on Tue Aug 30 08:57:31 2016
 @author: nicholas
 The Goal of this is to have a unified place to put the useful
 python 3.5 functions or templates
+
+Minor version changes:
+- added explicit if logger:
 """
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 import time
 import sys
 import shutil
 import logging
 import subprocess
 import os
+from Bio import SeqIO
+import hashlib
+import re
 
-
+logger = logging.getLogger('root')
 def get_args_template():
     """
     Template for argument parsing; dont import this, by the way
@@ -187,92 +193,117 @@ def set_up_root_logging(verbosity, outfile):
     logger = logging.getLogger()    
     return(logger)
 
-def last_exception():
-    """ From Pyani
-    Returns last exception as a string, or use in logging.
-    """
-    exc_type, exc_value, exc_traceback = sys.exc_info()
-    return(''.join(traceback.format_exception(exc_type, exc_value,
-                                              exc_traceback)))
 
-# def make_outdir_carful(dirname):
-def make_outdir(dirname):
-    """ From Pyani
-    Make the output directory, if required.
-    This is a little involved.  If the output directory already exists,
-    we take the safe option by default, and stop with an error.  We can,
-    however, choose to force the program to go on, in which case we can
-    either clobber the existing directory, or not.  The options turn out
-    as the following, if the directory exists:
-    DEFAULT: stop and report the collision
-    FORCE: continue, and remove the existing output directory
-    NOCLOBBER+FORCE: continue, but do not remove the existing output
+def make_outdir(path, logger=None):
+    """makes a directory if it doesnt exist
+    requires os, errno
     """
-    if os.path.exists(dirname):
-        if not args.force:
-            logger.error("Output directory %s would " % dirname +
-                         "overwrite existing files (exiting)")
-            sys.exit(1)
-        else:
-            logger.info("Removing directory %s and everything below it" %
-                        dirname)
-            if args.noclobber:
-                logger.warning("NOCLOBBER: not actually deleting directory")
-            else:
-                shutil.rmtree(args.output)
-    logger.info("Creating directory %s" % dirname)
     try:
-        os.makedirs(dirname)   # We make the directory recursively
-        # Depending on the choice of method, a subdirectory will be made for
-        # alignment output files
-    except OSError:
-        # This gets thrown if the directory exists. If we've forced overwrite/
-        # delete and we're not clobbering, we let things slide
-        if args.noclobber and args.force:
-            logger.info("NOCLOBBER+FORCE: not creating directory")
-        else:
-            logger.error(last_exception)
+        os.makedirs(path)
+        if logger:
+            logger.debug("creating new directory: {0}".format(path))
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            if logger:
+                logger.error("Cannot make directory {0}!".format(path))
             sys.exit(1)
+
+# def last_exception():
+#     """ From Pyani
+#     Returns last exception as a string, or use in logging.
+#     """
+#     exc_type, exc_value, exc_traceback = sys.exc_info()
+#     return(''.join(traceback.format_exception(exc_type, exc_value,
+#                                               exc_traceback)))
+
+# # def make_outdir_carful(dirname):
+# def make_outdir(dirname):
+#     """ From Pyani
+#     Make the output directory, if required.
+#     This is a little involved.  If the output directory already exists,
+#     we take the safe option by default, and stop with an error.  We can,
+#     however, choose to force the program to go on, in which case we can
+#     either clobber the existing directory, or not.  The options turn out
+#     as the following, if the directory exists:
+#     DEFAULT: stop and report the collision
+#     FORCE: continue, and remove the existing output directory
+#     NOCLOBBER+FORCE: continue, but do not remove the existing output
+#     """
+#     if os.path.exists(dirname):
+#         if not args.force:
+#             logger.error("Output directory %s would " % dirname +
+#                          "overwrite existing files (exiting)")
+#             sys.exit(1)
+#         else:
+#             logger.info("Removing directory %s and everything below it" %
+#                         dirname)
+#             if args.noclobber:
+#                 logger.warning("NOCLOBBER: not actually deleting directory")
+#             else:
+#                 shutil.rmtree(args.output)
+#     logger.info("Creating directory %s" % dirname)
+#     try:
+#         os.makedirs(dirname)   # We make the directory recursively
+#         # Depending on the choice of method, a subdirectory will be made for
+#         # alignment output files
+#     except OSError:
+#         # This gets thrown if the directory exists. If we've forced overwrite/
+#         # delete and we're not clobbering, we let things slide
+#         if args.noclobber and args.force:
+#             logger.info("NOCLOBBER+FORCE: not creating directory")
+#         else:
+#             logger.error(last_exception)
+#             sys.exit(1)
 
 
 #def make_output_prefix(map_output_dir, exp_name):
-def make_output_prefix(output_dir, name):
+def make_output_prefix(output_dir, name, logger=None):
     """ makes output prefix from output directory and name.
     requires os, logger
     """
-    logger.debug(" output_prefix: %s" % os.path.join(output_dir, name))
+    if logger:
+        logger.debug(" output_prefix: %s" % os.path.join(output_dir, name))
     return(os.path.join(output_dir, name))
 
 
 #def copy_ref_to_temp(current_file, dest_dir, overwrite=False):
-def copy_file(current_file, dest_dir, overwrite=False):
+def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
     """Copy reference fasta file to dest_dir to avoid making messy
-    indexing files everywhere (generated during mapping).  Could all be done
+    indexing files everywhere (generated during mapping).  
+    There is an option to rename resulting file. Probably could all be done
     with shutil.copyfile, but I cant figure a way to handle the errors as well..
     This uses a system call to "rm x -f"; is this safe? I have to have the
     -f flag because otherwise it prompts, which disrumpt the flow.
     require shutil, logger, subprocess, sys, os, subprocess
     """
-    new_ref = os.path.join(dest_dir, os.path.basename(current_file))
+    if type(name) is str and name != "":
+        new_file_name = str(name)
+    else:
+        new_file_name = os.path.basename(current_file)
+    new_ref = os.path.join(dest_dir, name)
     if os.path.exists(new_ref):
         if overwrite:
             try:
-                logger.debug("removing {0} to be overwritten with {1}.".format(
-                             new_ref, current_file))
                 rm_cmd = "rm -f {0}".format(new_ref)
-                logger.debug(rm_cmd)
+                if logger:
+                    logger.debug("removing {0} to be overwritten with {1}.".format(
+                        new_ref, current_file))
+                    logger.debug(rm_cmd)
                 subprocess.run(rm_cmd, shell=sys.platform != "win32",
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE, check=True)
             except:
-                logger.error("couldn't overwrite file with copy_ref_to_temp")
+                if logger:
+                    logger.error("couldn't overwrite file with copy_ref_to_temp")
                 sys.exit(1)
         else:
-            logger.error("cannot overwrite {0} to {1}".format(new_ref, current_file))
+            if logger:
+                logger.error("cannot overwrite {0} to {1}".format(new_ref,
+                                                                  current_file))
             sys.exit(1)
     else:
-        logger.error
-    logger.info("copying fasta from %s to %s" % (current_file, new_ref))
+        if logger:
+            logger.info("copying fasta from %s to %s" % (current_file, new_ref))
     cmd = str("cp %s %s" % (current_file, new_ref))
     subprocess.run(cmd, shell=sys.platform != "win32",
                    stdout=subprocess.PIPE,
@@ -280,22 +311,24 @@ def copy_file(current_file, dest_dir, overwrite=False):
     return(new_ref)
 
 
-def check_installed_tools(list_of_tools):
+def check_installed_tools(list_of_tools, logger=None):
     """given a list of executables (or things that should be in PATH,
     raise error if executable for a tool is not found
     requires shutil, logger, sys
     """
     for i in list_of_tools:
         if not shutil.which(i):
-            logger.error("Must have {0} installed in PATH!".format(i))
+            if logger:
+                logger.error("Must have {0} installed in PATH!".format(i))
             sys.exit(1)
         else:
-            logger.debug("{0} executable found".format(i))
+            if logger:
+                logger.debug("{0} executable found".format(i))
 
 
 
 
-def get_ave_read_len_from_fastq(fastq1, N=50):
+def get_ave_read_len_from_fastq(fastq1, N=50, logger=None):
     """from LP; return average read length in fastq1 file from first N reads
     """
     count, tot = 0, 0
@@ -309,13 +342,14 @@ def get_ave_read_len_from_fastq(fastq1, N=50):
         tot += len(read)
         if count >= N:
             break
-    logger.info("From the first {0} reads in {1}, mean length is {2}".format(
-                N, os.path.basename(fastq1), float(tot/count)))
+    if logger:
+        logger.info("From the first {0} reads in {1}, mean length is {2}".format(
+            N, os.path.basename(fastq1), float(tot/count)))
     return(float(tot/count))
 
 
 #def get_number_mapped(bam):
-def get_number_mapped(bam, samtools_exe):
+def get_number_mapped(bam, samtools_exe, logger=None):
     """use samtools flagstats to retrieve total mapped reads as a diagnostic
     returns a string to be printed, the 4th line of flagstat
     requires subprocess, sys, logger (SAMtools)
@@ -328,51 +362,56 @@ def get_number_mapped(bam, samtools_exe):
     try:
         printout = flagstats.stdout.decode("utf-8").split("\n")[4]
     except IndexError:
-        logger.error("Error reading {0} to determine number of mapped reads".format(bam))
+        if logger:
+            logger.error("Error reading {0}".format(bam))
         sys.exit(1)
     return(printout)
 
 
-def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates, keep_unmapped):
+def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates, keep_unmapped,
+                                       samtools_exe, logger=None):
     """
-    IF fetch_mates is true, mapped reads are extracted, and mates are feteched with the LC_ALL line.
-    If not, that part is skipped, and just the mapped reads are extracted.
-    Setting keep_unmapped to true will output a bam file with all the remaining reads.  This could
-    be used if you are really confident there are no duplicate mappings you are interested in.
+    IF fetch_mates is true, mapped reads are extracted, 
+    and mates are feteched with the LC_ALL line.If not, that part is 
+    skipped, and just the mapped reads are extracted.
+    Setting keep_unmapped to true will output a bam file with 
+    all the remaining reads.  This could be used if you are really confident 
+    there are no duplicate mappings you are interested in.
      -F 4 option selects mapped reads
     Note that the umapped output includes reads whose pairs were mapped.  This is
     to try to catch the stragglers.
     LC_ALL=C  call from pierre lindenbaum. No idea how it does, but its magic
     """
     extract_cmds = []
-    logger.info("Extracting the reads of interest")
     # Either get nates or ignore mates
     if fetch_mates:
-        samview = str(args.samtools_exe + "  view -h -F 4 {0}.bam  | cut -f1 > " +
+        samview = str(samtools_exe + "  view -h -F 4 {0}.bam  | cut -f1 > " +
                       "{0}_mappedIDs.txt").format(map_results_prefix)
         lc_cmd = str("LC_ALL=C grep -w -F -f {0}_mappedIDs.txt  < {0}.sam >  " +
                      "{0}_mapped.sam").format(map_results_prefix)
         extract_cmds.extend([samview, lc_cmd])
     else:
-        samview = str(args.samtools_exe + " view -hS -F 4 {0}.bam > " +
+        samview = str(samtools_exe + " view -hS -F 4 {0}.bam > " +
                       "{0}_mapped.sam").format(map_results_prefix)
         extract_cmds.extend([samview])
-    samsort = str(args.samtools_exe + " view -bhS {0}_mapped.sam " +
+    samsort = str(samtools_exe + " view -bhS {0}_mapped.sam " +
                   "| samtools sort - > {0}_mapped.bam").format(map_results_prefix)
-    samindex = str(args.samtools_exe + " index {0}_mapped.bam").format(map_results_prefix)
+    samindex = str(samtools_exe + " index {0}_mapped.bam").format(map_results_prefix)
     extract_cmds.extend([samsort, samindex])
     if keep_unmapped:
-        samviewU = str(args.samtools_exe + "  view -f 4 {0}.bam  | cut -f1 > " +
+        samviewU = str(samtools_exe + "  view -f 4 {0}.bam  | cut -f1 > " +
                        "{0}_unmappedIDs.txt").format(map_results_prefix)
         lc_cmdU = str("LC_ALL=C grep -w -F -f {0}_unmappedIDs.txt  < " +
                       "{0}.sam > {0}_unmapped.sam").format(map_results_prefix)
-        samindexU = str(args.samtools_exe + " view -bhS {0}_unmapped.sam | samtools " +
+        samindexU = str(samtools_exe + " view -bhS {0}_unmapped.sam | samtools " +
                         "sort - -o {0}_unmapped.bam && samtools index " +
                         "{0}_unmapped.bam").format(map_results_prefix)
         extract_cmds.extend([samviewU, lc_cmdU, samindexU])
-    logger.debug("running the following commands to extract reads:")
+    if logger:
+        logger.debug("running the following commands to extract reads:")
     for i in extract_cmds:
-        logger.debug(i)
+        if logger:
+            logger.debug(i)
         subprocess.run(i, shell=sys.platform != "win32",
                        stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE, check=True)
@@ -411,6 +450,13 @@ def keep_only_first_contig(ref, newname="contig1"):
     given a multi fasta from SPAdes, extract first entry,
     rename "NODE_1" with newname, overwrite file
     requires os, re
+    fasta_sequences = SeqIO.parse(open(ref),'fasta')
+    with open(output_file) as out_file:
+        for fasta in fasta_sequences:
+            name, sequence = fasta.id, fasta.seq.tostring()
+            new_sequence = some_function(sequence)
+            write_fasta(out_file)
+
     """
     temp = os.path.join(os.path.dirname(ref), "temp.fasta")
     with open(temp, "w") as outfile:
@@ -418,7 +464,7 @@ def keep_only_first_contig(ref, newname="contig1"):
             lines = file_handle.readlines()
             if lines[0][0] != ">":
                 raise ValueError("Something wrong with spades output contig! Not a valid fasta!")
-            new_header = str(re.sub("NODE_1", newname, str(lines[0])))
+            new_header = str(re.sub("NODE_\d*", newname, str(lines[0])))
             outfile.write(new_header)
             for line in range(1, len(lines)):
                 if lines[line][0] == ">":
@@ -428,80 +474,82 @@ def keep_only_first_contig(ref, newname="contig1"):
     os.rename(temp, ref)
 
 
-def run_spades(output, ref, ref_as_contig, pe1_1='', pe1_2='', pe1_s='',
-               as_paired=True, keep_best=True, prelim=False,
-               k="21,33,55,77,99", seqname=''):
-    """wrapper for common spades setting for long illumina reads
-        ref_as_contig should be either blank, 'trusted', or 'untrusted'
-        prelim flag is True, only assembly is run, and without coverage correction
-        #TODO
-        the seqname variable is used only for renaming the resulting contigs
-        during iterative assembly.  It would be nice to inheirit from "ref",
-        but that is changed with each iteration. This should probably be addressed
-        before next major version change
-    """
-    if seqname == '':
-        seqname = ref
-    kmers = k  # .split[","]
-    success = False
-    #  prepare reference, if being used
-    if not ref_as_contig == "":
-        alt_contig = str("--%s-contigs %s" % (ref_as_contig, ref))
-    else:
-        alt_contig = ''
-    # prepare read types, etc
-    if as_paired and pe1_s != "":  # for libraries with both
-        singles = str("--pe1-s %s " % pe1_s)
-        pairs = str("--pe1-1 %s --pe1-2 %s " % (pe1_1, pe1_2))
-    elif as_paired and pe1_s == "":  # for libraries with just PE
-        singles = ""
-        pairs = str("--pe1-1 %s --pe1-2 %s " % (pe1_1, pe1_2))
-    elif pe1_s == "":  # for libraries treating paired ends as two single-end libs
-        singles = ''
-        pairs = str("--pe1-s %s --pe2-s %s " % (pe1_1, pe1_2))
-    else:  # for 3 single end libraries
-        singles = str("--pe1-s %s " % pe1_s)
-        pairs = str("--pe2-s %s --pe3-s %s " % (pe1_1, pe1_2))
-    reads = str(pairs+singles)
-#    spades_cmds=[]
-    if prelim:
-        prelim_cmd =\
-            str(args.spades_exe + " --only-assembler --cov-cutoff off --sc --careful -k {0}" +
-                " {1} {2} -o {3}").format(kmers, reads, alt_contig, output)
-        logger.info("Running the following command:\n{0}".format(prelim_cmd))
-        subprocess.run(prelim_cmd,
-                       shell=sys.platform != "win32",
-                       stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE, check=True)
-        success = output_from_subprocess_exists(os.path.join(output,
-                                                             "contigs.fasta"))
-        if prelim and keep_best and success:
-            logger.info("reserving first contig")
-            keep_only_first_contig(str(os.path.join(output, "contigs.fasta")),
-                                   newname=
-                                       os.path.splitext(os.path.basename(seqname))[0])
-    else:
-        spades_cmd = str(args.spades_exe + " --careful -k {0} {1} {2} -o " +
-                         "{3}").format(kmers, reads, alt_contig, output)
-        logger.info("Running the following command:\n{0}".format(spades_cmd))
-        subprocess.run(spades_cmd,
-                       shell=sys.platform != "win32",
-                       stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE)
-        # not check=True; dont know spades return codes
-        success = output_from_subprocess_exists(os.path.join(output,
-                                                             "contigs.fasta"))
-    return("{0}contigs.fasta".format(os.path.join(output, "")), success)
+# def run_spades(output, ref, ref_as_contig, pe1_1='', pe1_2='', pe1_s='',
+#                as_paired=True, keep_best=True, prelim=False,
+#                k="21,33,55,77,99", seqname=''):
+#     """wrapper for common spades setting for long illumina reads
+#         ref_as_contig should be either blank, 'trusted', or 'untrusted'
+#         prelim flag is True, only assembly is run, and without coverage correction
+#         #TODO
+#         the seqname variable is used only for renaming the resulting contigs
+#         during iterative assembly.  It would be nice to inheirit from "ref",
+#         but that is changed with each iteration. This should probably be addressed
+#         before next major version change
+#     """
+#     if seqname == '':
+#         seqname = ref
+#     kmers = k  # .split[","]
+#     success = False
+#     #  prepare reference, if being used
+#     if not ref_as_contig == "":
+#         alt_contig = str("--%s-contigs %s" % (ref_as_contig, ref))
+#     else:
+#         alt_contig = ''
+#     # prepare read types, etc
+#     if as_paired and pe1_s != "":  # for libraries with both
+#         singles = str("--pe1-s %s " % pe1_s)
+#         pairs = str("--pe1-1 %s --pe1-2 %s " % (pe1_1, pe1_2))
+#     elif as_paired and pe1_s == "":  # for libraries with just PE
+#         singles = ""
+#         pairs = str("--pe1-1 %s --pe1-2 %s " % (pe1_1, pe1_2))
+#     elif pe1_s == "":  # for libraries treating paired ends as two single-end libs
+#         singles = ''
+#         pairs = str("--pe1-s %s --pe2-s %s " % (pe1_1, pe1_2))
+#     else:  # for 3 single end libraries
+#         singles = str("--pe1-s %s " % pe1_s)
+#         pairs = str("--pe2-s %s --pe3-s %s " % (pe1_1, pe1_2))
+#     reads = str(pairs+singles)
+# #    spades_cmds=[]
+#     if prelim:
+#         prelim_cmd =\
+#             str(args.spades_exe + " --only-assembler --cov-cutoff off --sc --careful -k {0}" +
+#                 " {1} {2} -o {3}").format(kmers, reads, alt_contig, output)
+#         logger.info("Running the following command:\n{0}".format(prelim_cmd))
+#         subprocess.run(prelim_cmd,
+#                        shell=sys.platform != "win32",
+#                        stdout=subprocess.PIPE,
+#                        stderr=subprocess.PIPE, check=True)
+#         success = output_from_subprocess_exists(os.path.join(output,
+#                                                              "contigs.fasta"))
+#         if prelim and keep_best and success:
+#             logger.info("reserving first contig")
+#             keep_only_first_contig(str(os.path.join(output, "contigs.fasta")),
+#                                    newname=
+#                                        os.path.splitext(os.path.basename(seqname))[0])
+#     else:
+#         spades_cmd = str(args.spades_exe + " --careful -k {0} {1} {2} -o " +
+#                          "{3}").format(kmers, reads, alt_contig, output)
+#         logger.info("Running the following command:\n{0}".format(spades_cmd))
+#         subprocess.run(spades_cmd,
+#                        shell=sys.platform != "win32",
+#                        stdout=subprocess.PIPE,
+#                        stderr=subprocess.PIPE)
+#         # not check=True; dont know spades return codes
+#         success = output_from_subprocess_exists(os.path.join(output,
+#                                                              "contigs.fasta"))
+#     return("{0}contigs.fasta".format(os.path.join(output, "")), success)
 
 
-def run_quast(contigs, output, ref=""):
+def run_quast(contigs, output, quast_exe, ref="", logger=None):
     """Reference is optional. This is, honestly, a pretty dumb feature
+    requires sys, subprocess, (system install of quast)
     """
     if not ref == "":
         ref = str("-R %s" % ref)
     quast_cmd = str(args.quast_exe + " {0} {1} -o " +
                     "{2}").format(contigs, ref, output)
-    logger.info("Running quast as follows: {0}".format(quast_cmd))
+    if logger:
+        logger.info("Running quast as follows: {0}".format(quast_cmd))
     subprocess.run(quast_cmd,
                    shell=sys.platform != "win32",
                    stdout=subprocess.PIPE,
@@ -510,13 +558,14 @@ def run_quast(contigs, output, ref=""):
 
 
 
-def combine_contigs(mauve_path, contigs_name="riboSeedContigs_aggregated"):
+def combine_contigs(mauve_path, contigs_name="riboSeedContigs_aggregated",
+                      ext=".fasta"):
     """changed over to biopython
-    combine all *.fasta in dir, return path to concatenated file
+    combine all *ext files in dir, return path to concatenated file
     requires Bio.SeqIO, glob, os
     """
-    output = os.path.join(mauve_path, str(contigs_name+".fasta"))
-    fastas = glob.glob(str(mauve_path+"*.fasta"))
+    output = os.path.join(mauve_path, str(contigs_name+ext))
+    fastas = glob.glob(str(mauve_path+"*"+ext))
     with open(output, 'w') as w_file:
         for filen in fastas:
             with open(filen, 'rU') as o_file:
@@ -528,20 +577,21 @@ def combine_contigs(mauve_path, contigs_name="riboSeedContigs_aggregated"):
 
 def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
                         title="blastdb", out="blastdb",
-                        makeblastdb_exe=''):
+                        makeblastdb_exe='', logger=None):
     """
     This runs make blast db with the given parameters
     requires logging, os, subprocess, shutil
     """
-    logger = logging.getLogger(__name__)
+#    logger = logging.getLogger(__name__)
     #logging.getLogger(name=None)
-    logger.debug("TESTING I 2 3!")
+#    logger.debug("TESTING I 2 3!")
     if makeblastdb_exe == '':
         makeblastdb_exe = shutil.which("makeblastdb")
     makedbcmd = str("{0} -in {1} -input_type {2} -dbtype {3} " +
                     "-title {4} -out {5}").format(makeblastdb_exe, 
                         input_file, input_type, dbtype, title, out)
-    logger.info("Making blast db: {0}".format(makedbcmd))
+    if logger:
+        logger.info("Making blast db: {0}".format(makedbcmd))
     try:
         subprocess.run(makedbcmd, shell=sys.platform != "win32",
                        stdout=subprocess.PIPE,
@@ -550,17 +600,18 @@ def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
             title, out))
         return(0)
     except:
-        logging.error("Something bad happened when trying to make " +
-                     "a blast database")
+        if logger:
+            logging.error("Something bad happened when trying to make " +
+                          "a blast database")
         sys.exit(1)
 
 
-def run_blastp(input_file, database_name, outfmt, blastp_exe=''):
+def run_blastp(input_file, database_name, outfmt, blastp_exe='', logger=None):
     """
     requires logging subprocess, os, shutil
     """
     #logger = logging.getLogger(name=None)
-    logger = logging.getLogger(__name__)
+    # logger = logging.getLogger(__name__)
     output_file = os.path.join(os.path.split(input_file)[0],
                                str(os.path.splitext(
                                    os.path.basename(input_file))[0] +
@@ -570,21 +621,24 @@ def run_blastp(input_file, database_name, outfmt, blastp_exe=''):
     blastpcmd = str("{0} -db {1} -query {2} -out {3} -outfmt " +
                     "{4}").format(blastp_exe, database_name, input_file,
                                   output_file, outfmt)
-    logger.info("Running blastp: {0}".format(blastpcmd))
+    if logger:
+        logger.info("Running blastp: {0}".format(blastpcmd))
     try:
         subprocess.run(blastpcmd, shell=sys.platform != "win32",
                        stdout=subprocess.PIPE,
                        stderr=subprocess.PIPE, check=True)
-        logger.debug("Results from BLASTing {0} are here: {1}".format(
-            input_file, output_file))
+        if logger:
+            logger.debug("Results from BLASTing {0} are here: {1}".format(
+                input_file, output_file))
         return(0)
     except:
-        logger.error("Something bad happened when running blast")
+        if logger:
+            logger.error("Something bad happened when running blast")
         sys.exit(1)
 
 
 #def merge_outfiles(filelist, outfile_name):
-def merge_blast_tab_outfiles(filelist, outfile_name):
+def merge_blast_tab_outfiles(filelist, outfile_name, logger=None):
     """
     #TODO needs a test for headers
     for combining tab formated blast output format 6
@@ -595,13 +649,16 @@ def merge_blast_tab_outfiles(filelist, outfile_name):
     logger=logging.getLogger()
     filelist = [i for i in filelist if i.split(".")[-1:] == ['tab']]
     if len(filelist) == 1:
-        logger.warning("only one file found! no merging needed")
+        if logger:
+            logger.warning("only one file found! no merging needed")
         return(0)
     elif len(filelist) == 0:
-        logger.error("filelist empt; cannot perform merge!")
+        if logger:
+            logger.error("filelist empt; cannot perform merge!")
         return(1)
     else:
-        logger.info("merging all the blast results to %s" % outfile_name)
+        if logger:
+            logger.info("merging all the blast results to %s" % outfile_name)
         nfiles = len(filelist)
         fout = open(outfile_name, "a")
         # first file:
@@ -617,11 +674,14 @@ def merge_blast_tab_outfiles(filelist, outfile_name):
         return(0)
 
 
-def cleanup_output_to_csv(infile, accession_pattern='(?P<accession>[A-Z _\d]*\.\d*)'):
+def cleanup_output_to_csv(infile, 
+                          accession_pattern='(?P<accession>[A-Z _\d]*\.\d*)',
+                          logger=None):
     """
     given .tab from merge_blast_tab_outfiles, assign pretty column names,
     """
-    logger=logging.getLogger(name=None)
+    # if logger:
+    #     logger=logging.getLogger(name=None)
     print("cleaning up the csv output")
     colnames = ["query_id", "subject_id", "identity_perc", "alignment_length", "mismatches",
                 "gap_opens", "q_start", "q_end", "s_start", "s_end", "evalue", "bit_score"]
@@ -637,3 +697,15 @@ def cleanup_output_to_csv(infile, accession_pattern='(?P<accession>[A-Z _\d]*\.\
     results_annotated.to_csv(open(output_path_csv, "w"))
     print("wrote final csv to %s" % output_path_csv)
 #%%
+
+
+
+def md5(fname):
+    """straight from quantumsoup
+    http://stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file
+    """
+    hash_md5 = hashlib.md5()
+    with open(fname, "rb") as f:
+        for chunk in iter(lambda: f.read(4096), b""):
+            hash_md5.update(chunk)
+    return(hash_md5.hexdigest())

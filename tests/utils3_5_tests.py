@@ -4,8 +4,18 @@ Created on Tue Aug 30 08:57:31 2016
 @author: nicholas
 The Goal of this is to have a unified place to put the useful
 python 3.5 functions or templates
+
+how I got the fastq file
+# seqtk sample -s 27 ~/GitHub/FA/pseudochromosome/data/20150803_Abram1/reads/3123-1_1_trimmed.fastq .0005 
+
+bam file was from a riboseed mapping; md5: 939fbf2c282091aec0dfa278b05e94ec
+
+mapped bam was made from bam file with the following command
+ samtools view -Bh -F 4 /home/nicholas/GitHub/FB/Ecoli_comparative_genomics/scripts/riboSeed_pipeline/batch_coli_unpaired/map/mapping_20160906_region_7_riboSnag/test_smalt4_20160906_region_7_riboSnagS.bam > ~/GitHub/pyutilsnrw/tests/test_mapped.sam
+md5: 27944249bf064ba54576be83053e82b0
+
 """
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 import time
 import sys
 import shutil
@@ -13,298 +23,120 @@ import logging
 import subprocess
 import os
 import unittest
+import hashlib 
+
 sys.dont_write_bytecode = True
 
-
-@unittest.skipIf((sys.system_info[0] != 3) or (sys.system_info[1] < 5), "Subprocess.call, among otherthings wont run if you try this with les than python 3.5")
 from pyutilsnrw import utils3_5
+from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
+    copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
+    extract_mapped_and_mappedmates, keep_only_first_contig, md5
+
+    
+
+@unittest.skipIf((sys.version_info[0] != 3) or (sys.version_info[1] < 5), "Subprocess.call, among otherthings wont run if you try this with less than python 3.5")
 class utils3_5TestCase(unittest.TestCase):
-    def test_set_up_root_logging(self):
+    def setUp(self):
+        pass
+
+    def test_make_testing_dir(self):
+        if not os.path.exists(testdirname):
+            os.makedirs(testdirname)
+        self.assertTrue(os.path.exists(testdirname))
+
+    def test_make_output_prefix(self):
+        test_prefix = make_output_prefix(testdirname, "utils_3.5")
+        self.assertEqual(test_prefix,
+                         "".join([testdirname,os.path.sep, "utils_3.5"]))
+    
+    def test_check_installed_tools(self):
+        """is pwd on all mac/linux systems?
+        #TODO replace with better passing test
         """
-        This checks that set_up_root_logging ouputs a file with the
-        given verbosity. 
+        check_installed_tools(["pwd"])
+        # test fails properly
+        with self.assertRaises(SystemExit):
+            check_installed_tools(["thisisnotapathtoanactualexecutable"])
+
+    def test_copy_file(self):
+        if not os.path.exists(test_fastq_file):
+            raise("test file is gone! There should be a file called test_reads.fastq")
+        new_path = copy_file(current_file=test_fastq_file, dest_dir=testdirname,
+                  name="newname.fastq", overwrite=False)
+        self.assertEqual(new_path, os.path.join(testdirname,"newname.fastq"))
+        # test overwrite exit
+        with self.assertRaises(SystemExit):
+            new_path = copy_file(current_file=test_fastq_file, 
+                                 dest_dir=testdirname,
+                                 name="newname.fastq", overwrite=False)
+        os.remove(new_path)
+    
+    def test_get_ave_read_len_from_fastq(self):
+        """this probably could/should be refined to have a better test
         """
-        logfile = "test_log.txt"
-        test_logger = utils3_5.set_up_root_logging(3, logfile)
-        self.assertEqual('hello', 'world')
-        # check that s.split fails when the separator is not a string
-        with self.assertRaises(TypeError):
-            s.split(2)
+        mean_read_len = get_ave_read_len_from_fastq(test_fastq_file, N=5)
+        self.assertEqual(217.8, mean_read_len)
+    # def test_this_fails(self):
+    #     self.assertEqual("pinecone", 42)
 
-def set_up_root_logging(verbosity, outfile):
-    """derived from set_up_logging; had problem where functions in modules
-    could only log to root. If you cant lick 'em, join 'em.
-    requires logging, os, sys, time
-    logs debug level to file, and [verbosity] level to stderr
-    return a logger object
-     """
-    import logging
-    if (verbosity*10) not in range(10, 60, 10):
-        raise ValueError('Invalid log level: %s' % verbosity)
-    try:
-        logging.basicConfig(level=logging.DEBUG,
-                            format="%(asctime)s - %(levelname)s - %(message)s",
-                            datefmt='%m-%d %H:%M:%S',
-                            filename=outfile,
-                            filemode='w')
-    except:
-        logger.error("Could not open {0} for logging".format(outfile))
-        sys.exit(1)
-    # define a Handler which writes INFO messages or higher to the sys.stderr
-    console = logging.StreamHandler(sys.stderr)
-    console.setLevel(level=(verbosity *10))
-    # set a format which is simpler for console use
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # tell the handler to use this format
-    console.setFormatter(formatter)
-    # add the handler to the root logger
-    logging.getLogger('').addHandler(console)
-    # Now, we can log to the root logger, or any other logger. First the root...
-    logging.info("Initializing logger")
-    logging.debug("logging at level {0}".format(verbosity))
-    logger = logging.getLogger()    
-    return(logger)
+    # def  tearDown(self): # and test clean temp dir
+    #     """ I tried to do something like
+    #     @unittest.skipUnless(clean_temp, "temporary files were retained")
+    #     but couldnt get the variabel to be passed through.  For now, just make
+    #     sure this is the last
+    #     """
+    #     print("running teardown method")
+    #     clean_temp_dir(testdirname)
 
-def last_exception():
-    """ From Pyani
-    Returns last exception as a string, or use in logging.
-    """
-    exc_type, exc_value, exc_traceback = sys.exc_info()
-    return(''.join(traceback.format_exception(exc_type, exc_value,
-                                              exc_traceback)))
+    def test_get_number_mapped(self):
+        """This is bad cause I hardcoded the path for samtools
+        """
+        result = get_number_mapped(test_bam_file, samtools_exe)
+        reference = "151 + 0 mapped (0.56% : N/A)"
+        self.assertEqual(result, reference)
 
-# def make_outdir_carful(dirname):
-def make_outdir(dirname):
-    """ From Pyani
-    Make the output directory, if required.
-    This is a little involved.  If the output directory already exists,
-    we take the safe option by default, and stop with an error.  We can,
-    however, choose to force the program to go on, in which case we can
-    either clobber the existing directory, or not.  The options turn out
-    as the following, if the directory exists:
-    DEFAULT: stop and report the collision
-    FORCE: continue, and remove the existing output directory
-    NOCLOBBER+FORCE: continue, but do not remove the existing output
-    """
-    if os.path.exists(dirname):
-        if not args.force:
-            logger.error("Output directory %s would " % dirname +
-                         "overwrite existing files (exiting)")
-            sys.exit(1)
-        else:
-            logger.info("Removing directory %s and everything below it" %
-                        dirname)
-            if args.noclobber:
-                logger.warning("NOCLOBBER: not actually deleting directory")
-            else:
-                shutil.rmtree(args.output)
-    logger.info("Creating directory %s" % dirname)
-    try:
-        os.makedirs(dirname)   # We make the directory recursively
-        # Depending on the choice of method, a subdirectory will be made for
-        # alignment output files
-    except OSError:
-        # This gets thrown if the directory exists. If we've forced overwrite/
-        # delete and we're not clobbering, we let things slide
-        if args.noclobber and args.force:
-            logger.info("NOCLOBBER+FORCE: not creating directory")
-        else:
-            logger.error(last_exception)
-            sys.exit(1)
+    def test_extract_mapped_and_mappedmates(self):
+        """ dont trust this if  make_output_prefix test fails
+        some help from PSS on SO:
+        http://stackoverflow.com/questions/16874598/how-do-i-calculate-the-md5-checksum-of-a-file-in-python
+        """
+        prefix = make_output_prefix(output_dir=os.path.join(os.path.dirname(__file__),
+                                                            "references"), 
+                                    name="pyutilsnrw_sample")
+        extract_mapped_and_mappedmates(map_results_prefix=prefix, 
+                                       fetch_mates=False, 
+                                       keep_unmapped=False,
+                                       samtools_exe=samtools_exe)
+        # reference mapping md5
+        mapped_md5 = "27944249bf064ba54576be83053e82b0"  
+        md5_returned = md5(str(prefix+"_mapped.sam"))
 
+        # Finally compare original MD5 with freshly calculated
+        self.assertEqual(mapped_md5, md5_returned)
+        # delete files created
+        files_created = ["_mapped.bam",
+                         "_mapped.bam.bai",
+                         "_mapped.sam"]
+        if mapped_md5 == md5_returned:
+            for i in files_created:
+                os.remove(str(prefix+i))
 
-#def make_output_prefix(map_output_dir, exp_name):
-def make_output_prefix(output_dir, name):
-    """ makes output prefix from output directory and name.
-    requires os, logger
-    """
-    logger.debug(" output_prefix: %s" % os.path.join(output_dir, name))
-    return(os.path.join(output_dir, name))
-
-
-#def copy_ref_to_temp(current_file, dest_dir, overwrite=False):
-def copy_file(current_file, dest_dir, overwrite=False):
-    """Copy reference fasta file to dest_dir to avoid making messy
-    indexing files everywhere (generated during mapping).  Could all be done
-    with shutil.copyfile, but I cant figure a way to handle the errors as well..
-    This uses a system call to "rm x -f"; is this safe? I have to have the
-    -f flag because otherwise it prompts, which disrumpt the flow.
-    require shutil, logger, subprocess, sys, os, subprocess
-    """
-    new_ref = os.path.join(dest_dir, os.path.basename(current_file))
-    if os.path.exists(new_ref):
-        if overwrite:
-            try:
-                logger.debug("removing {0} to be overwritten with {1}.".format(
-                             new_ref, current_file))
-                rm_cmd = "rm -f {0}".format(new_ref)
-                logger.debug(rm_cmd)
-                subprocess.run(rm_cmd, shell=sys.platform != "win32",
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE, check=True)
-            except:
-                logger.error("couldn't overwrite file with copy_ref_to_temp")
-                sys.exit(1)
-        else:
-            logger.error("cannot overwrite {0} to {1}".format(new_ref, current_file))
-            sys.exit(1)
-    else:
-        logger.error
-    logger.info("copying fasta from %s to %s" % (current_file, new_ref))
-    cmd = str("cp %s %s" % (current_file, new_ref))
-    subprocess.run(cmd, shell=sys.platform != "win32",
-                   stdout=subprocess.PIPE,
-                   stderr=subprocess.PIPE, check=True)
-    return(new_ref)
-
-
-def check_installed_tools(list_of_tools):
-    """given a list of executables (or things that should be in PATH,
-    raise error if executable for a tool is not found
-    requires shutil, logger, sys
-    """
-    for i in list_of_tools:
-        if not shutil.which(i):
-            logger.error("Must have {0} installed in PATH!".format(i))
-            sys.exit(1)
-        else:
-            logger.debug("{0} executable found".format(i))
-
-
-
-
-def get_ave_read_len_from_fastq(fastq1, N=50):
-    """from LP; return average read length in fastq1 file from first N reads
-    """
-    count, tot = 0, 0
-    if os.path.splitext(fastq1)[-1] in ['.gz', '.gzip']:
-        open_fun = gzip.open
-    else:
-        open_fun = open
-    data = SeqIO.parse(open_fun(fastq1, "rt"), "fastq")
-    for read in data:
-        count += 1
-        tot += len(read)
-        if count >= N:
-            break
-    logger.info("From the first {0} reads in {1}, mean length is {2}".format(
-                N, os.path.basename(fastq1), float(tot/count)))
-    return(float(tot/count))
-
-
-#def get_number_mapped(bam):
-def get_number_mapped(bam, samtools_exe):
-    """use samtools flagstats to retrieve total mapped reads as a diagnostic
-    returns a string to be printed, the 4th line of flagstat
-    requires subprocess, sys, logger (SAMtools)
-    """
-    flagstats = subprocess.run(str("{0} flagstat {1}").format(samtools_exe, bam),
-                               shell=sys.platform != "win32",
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE,
-                               check=True)
-    try:
-        printout = flagstats.stdout.decode("utf-8").split("\n")[4]
-    except IndexError:
-        logger.error("Error reading {0} to determine number of mapped reads".format(bam))
-        sys.exit(1)
-    return(printout)
-
-
-def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates, keep_unmapped):
-    """
-    IF fetch_mates is true, mapped reads are extracted, and mates are feteched with the LC_ALL line.
-    If not, that part is skipped, and just the mapped reads are extracted.
-    Setting keep_unmapped to true will output a bam file with all the remaining reads.  This could
-    be used if you are really confident there are no duplicate mappings you are interested in.
-     -F 4 option selects mapped reads
-    Note that the umapped output includes reads whose pairs were mapped.  This is
-    to try to catch the stragglers.
-    LC_ALL=C  call from pierre lindenbaum. No idea how it does, but its magic
-    """
-    extract_cmds = []
-    logger.info("Extracting the reads of interest")
-    # Either get nates or ignore mates
-    if fetch_mates:
-        samview = str(args.samtools_exe + "  view -h -F 4 {0}.bam  | cut -f1 > " +
-                      "{0}_mappedIDs.txt").format(map_results_prefix)
-        lc_cmd = str("LC_ALL=C grep -w -F -f {0}_mappedIDs.txt  < {0}.sam >  " +
-                     "{0}_mapped.sam").format(map_results_prefix)
-        extract_cmds.extend([samview, lc_cmd])
-    else:
-        samview = str(args.samtools_exe + " view -hS -F 4 {0}.bam > " +
-                      "{0}_mapped.sam").format(map_results_prefix)
-        extract_cmds.extend([samview])
-    samsort = str(args.samtools_exe + " view -bhS {0}_mapped.sam " +
-                  "| samtools sort - > {0}_mapped.bam").format(map_results_prefix)
-    samindex = str(args.samtools_exe + " index {0}_mapped.bam").format(map_results_prefix)
-    extract_cmds.extend([samsort, samindex])
-    if keep_unmapped:
-        samviewU = str(args.samtools_exe + "  view -f 4 {0}.bam  | cut -f1 > " +
-                       "{0}_unmappedIDs.txt").format(map_results_prefix)
-        lc_cmdU = str("LC_ALL=C grep -w -F -f {0}_unmappedIDs.txt  < " +
-                      "{0}.sam > {0}_unmapped.sam").format(map_results_prefix)
-        samindexU = str(args.samtools_exe + " view -bhS {0}_unmapped.sam | samtools " +
-                        "sort - -o {0}_unmapped.bam && samtools index " +
-                        "{0}_unmapped.bam").format(map_results_prefix)
-        extract_cmds.extend([samviewU, lc_cmdU, samindexU])
-    logger.debug("running the following commands to extract reads:")
-    for i in extract_cmds:
-        logger.debug(i)
-        subprocess.run(i, shell=sys.platform != "win32",
-                       stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE, check=True)
-
-
-#def clean_temp_dir(map_output_dir):
-def clean_temp_dir(temp_dir):
-    """ from http://stackoverflow.com/questions/185936/delete-folder-contents-in-python
-        this should fail on read-only files
-        requires shutil, os
-    """
-    for the_file in os.listdir(temp_dir):
-        file_path = os.path.join(temp_dir, the_file)
-        try:
-            if os.path.isfile(file_path):
-                os.unlink(file_path)
-            elif os.path.isdir(file_path):
-                shutil.rmtree(file_path)
-        except Exception as e:
-            print(e)
-
-
-def output_from_subprocess_exists(output):
-    """just what it says: given an output path or dir, return True if it exists
-    requires os
-    """
-    if os.path.exists(output):
-        return(True)
-    else:
-        return(False)
-
-
-def keep_only_first_contig(ref, newname="contig1"):
-    #TODO make a biopython version
-    """ 
-    given a multi fasta from SPAdes, extract first entry,
-    rename "NODE_1" with newname, overwrite file
-    requires os, re
-    """
-    temp = os.path.join(os.path.dirname(ref), "temp.fasta")
-    with open(temp, "w") as outfile:
-        with open(ref, "r") as file_handle:
-            lines = file_handle.readlines()
-            if lines[0][0] != ">":
-                raise ValueError("Something wrong with spades output contig! Not a valid fasta!")
-            new_header = str(re.sub("NODE_1", newname, str(lines[0])))
-            outfile.write(new_header)
-            for line in range(1, len(lines)):
-                if lines[line][0] == ">":
-                    break  # stop after first entry
-                outfile.write(str(lines[line]))
-    os.remove(ref)
-    os.rename(temp, ref)
-
+    def test_keep_only_first_contig(self):
+        """copy_file
+        """
+        copy_file(current_file=test_multifasta,
+                  dest_dir=os.path.dirname(test_multifasta),
+                  name='duplicated_multifasta.fasta', overwrite=False, 
+                  logger=None)
+        keep_only_first_contig(test_multifasta, newname="contig1")
+        self.assertEqual(md5(test_multifasta), md5(test_singlefasta))
+        copy_file(current_file=os.path.join(os.path.dirname(test_multifasta),
+                               "duplicated_multifasta.fasta"),
+                  dest_dir=os.path.dirname(test_multifasta),
+                  name=os.path.basename(test_multifasta), overwrite=True, 
+                  logger=None)
+        os.remove(os.path.join(os.path.dirname(test_multifasta),
+                               "duplicated_multifasta.fasta"))
 
 def run_spades(output, ref, ref_as_contig, pe1_1='', pe1_2='', pe1_s='',
                as_paired=True, keep_best=True, prelim=False,
@@ -516,5 +348,27 @@ def cleanup_output_to_csv(infile, accession_pattern='(?P<accession>[A-Z _\d]*\.\
     print("wrote final csv to %s" % output_path_csv)
 #%%
 
+
 if __name__ == '__main__':
+    # logger = utils3_5.set_up_logging(verbosity=1, name=__name__,
+    #                                  outfile=os.path.join(curdir, 
+    #                                                       "tests_logger.txt"))
+    curdir=os.getcwd()
+    samtools_exe="/usr/bin/samtools"
+    testdirname=os.path.join(os.path.dirname(__file__), "utils3_5tests")
+    test_fastq_file = os.path.join(os.path.dirname(__file__), 
+                                   str("references"+os.path.sep+'test_reads.fastq'))
+    test_bam_file = os.path.join(os.path.dirname(__file__),
+                                   str("references"+os.path.sep+
+                                       "pyutilsnrw_sample.bam"))
+    test_bam_mapped_file = os.path.join(os.path.dirname(__file__), 
+                                   str("references"+os.path.sep+
+                                       "pyutilsnrw_sample_mapped.bam"))
+    test_multifasta = os.path.join(os.path.dirname(__file__), 
+                                   str("references"+os.path.sep+
+                                       "test_multiseqs_reference.fasta"))
+    test_singlefasta = os.path.join(os.path.dirname(__file__), 
+                                   str("references"+os.path.sep+
+                                       "test_only_first_reference.fasta"))
+    clean_temp = True
     unittest.main()
