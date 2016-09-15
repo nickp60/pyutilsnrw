@@ -46,6 +46,10 @@ def get_args():
                         action="store_true",
                         help="set if you want to inspect the output files",
                         default=False)
+    parser.add_argument("-s", "--samtools_exe", dest='samtools_exe',
+                        action="store",
+                        help="to set the path manually for the samtools exe",
+                        default=False)
     args = parser.parse_args()
     return(args)
 
@@ -295,7 +299,7 @@ def cleanup_output_to_csv(infile,
 if __name__ == '__main__':
     args = get_args()
     curdir = os.getcwd()
-    samtools_exe = "samtools"
+    # samtools_exe = args.samtools_exe
     testdirname = os.path.join(os.path.dirname(__file__), "utils3_5tests")
     test_fastq_file = os.path.join(os.path.dirname(__file__),
                                    str("references" + os.path.sep +
@@ -316,6 +320,7 @@ if __name__ == '__main__':
                                    str("references" + os.path.sep +
                                        "contigs_from_tests_reference.fa"))
     utils3_5TestCase.keep_temps = args.keep_temps
+    utils3_5TestCase.samtools_exe = args.samtools_exe
     unittest.main()
     # suite = unittest.TestSuite()
     # keep_temps=args.keep_temps
