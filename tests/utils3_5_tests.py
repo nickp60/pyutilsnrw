@@ -6,12 +6,17 @@ The Goal of this is to have a unified place to put the useful
 python 3.5 functions or templates
 
 how I got the fastq file
-# seqtk sample -s 27 ~/GitHub/FA/pseudochromosome/data/20150803_Abram1/reads/3123-1_1_trimmed.fastq .0005 
+# seqtk sample -s 27 ~/GitHub/FA/pseudochromosome/data/20150803_Abram1/ \
+    reads/3123-1_1_trimmed.fastq .0005
 
 bam file was from a riboseed mapping; md5: 939fbf2c282091aec0dfa278b05e94ec
 
 mapped bam was made from bam file with the following command
- samtools view -Bh -F 4 /home/nicholas/GitHub/FB/Ecoli_comparative_genomics/scripts/riboSeed_pipeline/batch_coli_unpaired/map/mapping_20160906_region_7_riboSnag/test_smalt4_20160906_region_7_riboSnagS.bam > ~/GitHub/pyutilsnrw/tests/test_mapped.sam
+ samtools view -Bh -F 4 /home/nicholas/GitHub/FB/Ecoli_comparative_genomics/
+    scripts/riboSeed_pipeline/batch_coli_unpaired/map/
+    mapping_20160906_region_7_riboSnag/
+    test_smalt4_20160906_region_7_riboSnagS.bam >
+     ~/GitHub/pyutilsnrw/tests/test_mapped.sam
 md5: 27944249bf064ba54576be83053e82b0
 
 """
@@ -23,19 +28,38 @@ import logging
 import subprocess
 import os
 import unittest
-import hashlib 
-
+import hashlib
+import glob
+import argparse
 sys.dont_write_bytecode = True
 
-from pyutilsnrw import utils3_5
 from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
-    extract_mapped_and_mappedmates, keep_only_first_contig, md5
+    extract_mapped_and_mappedmates, keep_only_first_contig, md5,\
+    combine_contigs, clean_temp_dir
 
-    
 
-@unittest.skipIf((sys.version_info[0] != 3) or (sys.version_info[1] < 5), "Subprocess.call, among otherthings wont run if you try this with less than python 3.5")
+def get_args():
+    parser = argparse.ArgumentParser(
+        description="test suite for pyutilsnrw repo")
+    parser.add_argument("-k", "--keep_temps", dest='keep_temps',
+                        action="store_true",
+                        help="set if you want to inspect the output files",
+                        default=False)
+    args = parser.parse_args()
+    return(args)
+
+
+@unittest.skipIf((sys.version_info[0] != 3) or (sys.version_info[1] < 5),
+                 "Subprocess.call, among otherthings wont run if you try this" +
+                 " with less than python 3.5")
 class utils3_5TestCase(unittest.TestCase):
+    keep_temps = False
+    # def __init__(self, testname, keep_temps):
+    #     super(utils3_5TestCase, self).__init__(testname)
+    #     self.keep_temps = keep_temps
+    #     pass
+
     def setUp(self):
         pass
 
@@ -44,11 +68,23 @@ class utils3_5TestCase(unittest.TestCase):
             os.makedirs(testdirname)
         self.assertTrue(os.path.exists(testdirname))
 
+    # def test_this_fails(self):
+    #      self.assertEqual("pinecone", 42)
+
+    def test_clean_temp_dir(self):
+        """ I tried to do something like
+        @unittest.skipUnless(clean_temp, "temporary files were retained")
+        but couldnt get the variabel to be passed through.
+        """
+        if not os.path.exists(os.path.join(testdirname, "test_subdir")):
+            os.makedirs(os.path.join(testdirname, "test_subdir"))
+        clean_temp_dir(testdirname)
+
     def test_make_output_prefix(self):
         test_prefix = make_output_prefix(testdirname, "utils_3.5")
         self.assertEqual(test_prefix,
-                         "".join([testdirname,os.path.sep, "utils_3.5"]))
-    
+                         "".join([testdirname, os.path.sep, "utils_3.5"]))
+
     def test_check_installed_tools(self):
         """is pwd on all mac/linux systems?
         #TODO replace with better passing test
@@ -60,33 +96,22 @@ class utils3_5TestCase(unittest.TestCase):
 
     def test_copy_file(self):
         if not os.path.exists(test_fastq_file):
-            raise("test file is gone! There should be a file called test_reads.fastq")
+            raise("test file is gone!  where is test_reads.fastq ?")
         new_path = copy_file(current_file=test_fastq_file, dest_dir=testdirname,
-                  name="newname.fastq", overwrite=False)
-        self.assertEqual(new_path, os.path.join(testdirname,"newname.fastq"))
+                             name="newname.fastq", overwrite=False)
+        self.assertEqual(new_path, os.path.join(testdirname, "newname.fastq"))
         # test overwrite exit
         with self.assertRaises(SystemExit):
-            new_path = copy_file(current_file=test_fastq_file, 
+            new_path = copy_file(current_file=test_fastq_file,
                                  dest_dir=testdirname,
                                  name="newname.fastq", overwrite=False)
         os.remove(new_path)
-    
+
     def test_get_ave_read_len_from_fastq(self):
         """this probably could/should be refined to have a better test
         """
         mean_read_len = get_ave_read_len_from_fastq(test_fastq_file, N=5)
         self.assertEqual(217.8, mean_read_len)
-    # def test_this_fails(self):
-    #     self.assertEqual("pinecone", 42)
-
-    # def  tearDown(self): # and test clean temp dir
-    #     """ I tried to do something like
-    #     @unittest.skipUnless(clean_temp, "temporary files were retained")
-    #     but couldnt get the variabel to be passed through.  For now, just make
-    #     sure this is the last
-    #     """
-    #     print("running teardown method")
-    #     clean_temp_dir(testdirname)
 
     def test_get_number_mapped(self):
         """This is bad cause I hardcoded the path for samtools
@@ -98,18 +123,19 @@ class utils3_5TestCase(unittest.TestCase):
     def test_extract_mapped_and_mappedmates(self):
         """ dont trust this if  make_output_prefix test fails
         some help from PSS on SO:
-        http://stackoverflow.com/questions/16874598/how-do-i-calculate-the-md5-checksum-of-a-file-in-python
+        http://stackoverflow.com/questions/16874598/
+            how-do-i-calculate-the-md5-checksum-of-a-file-in-python
         """
-        prefix = make_output_prefix(output_dir=os.path.join(os.path.dirname(__file__),
-                                                            "references"), 
+        ref_dir = os.path.join(os.path.dirname(__file__), "references")
+        prefix = make_output_prefix(output_dir=ref_dir,
                                     name="pyutilsnrw_sample")
-        extract_mapped_and_mappedmates(map_results_prefix=prefix, 
-                                       fetch_mates=False, 
+        extract_mapped_and_mappedmates(map_results_prefix=prefix,
+                                       fetch_mates=False,
                                        keep_unmapped=False,
                                        samtools_exe=samtools_exe)
         # reference mapping md5
-        mapped_md5 = "27944249bf064ba54576be83053e82b0"  
-        md5_returned = md5(str(prefix+"_mapped.sam"))
+        mapped_md5 = "27944249bf064ba54576be83053e82b0"
+        md5_returned = md5(str(prefix + "_mapped.sam"))
 
         # Finally compare original MD5 with freshly calculated
         self.assertEqual(mapped_md5, md5_returned)
@@ -119,121 +145,37 @@ class utils3_5TestCase(unittest.TestCase):
                          "_mapped.sam"]
         if mapped_md5 == md5_returned:
             for i in files_created:
-                os.remove(str(prefix+i))
+                os.remove(str(prefix + i))
 
     def test_keep_only_first_contig(self):
         """copy_file
         """
         copy_file(current_file=test_multifasta,
                   dest_dir=os.path.dirname(test_multifasta),
-                  name='duplicated_multifasta.fasta', overwrite=False, 
+                  name='duplicated_multifasta.fasta', overwrite=False,
                   logger=None)
         keep_only_first_contig(test_multifasta, newname="contig1")
         self.assertEqual(md5(test_multifasta), md5(test_singlefasta))
         copy_file(current_file=os.path.join(os.path.dirname(test_multifasta),
-                               "duplicated_multifasta.fasta"),
+                                            "duplicated_multifasta.fasta"),
                   dest_dir=os.path.dirname(test_multifasta),
-                  name=os.path.basename(test_multifasta), overwrite=True, 
+                  name=os.path.basename(test_multifasta), overwrite=True,
                   logger=None)
         os.remove(os.path.join(os.path.dirname(test_multifasta),
                                "duplicated_multifasta.fasta"))
 
-def run_spades(output, ref, ref_as_contig, pe1_1='', pe1_2='', pe1_s='',
-               as_paired=True, keep_best=True, prelim=False,
-               k="21,33,55,77,99", seqname=''):
-    """wrapper for common spades setting for long illumina reads
-        ref_as_contig should be either blank, 'trusted', or 'untrusted'
-        prelim flag is True, only assembly is run, and without coverage correction
-        #TODO
-        the seqname variable is used only for renaming the resulting contigs
-        during iterative assembly.  It would be nice to inheirit from "ref",
-        but that is changed with each iteration. This should probably be addressed
-        before next major version change
-    """
-    if seqname == '':
-        seqname = ref
-    kmers = k  # .split[","]
-    success = False
-    #  prepare reference, if being used
-    if not ref_as_contig == "":
-        alt_contig = str("--%s-contigs %s" % (ref_as_contig, ref))
-    else:
-        alt_contig = ''
-    # prepare read types, etc
-    if as_paired and pe1_s != "":  # for libraries with both
-        singles = str("--pe1-s %s " % pe1_s)
-        pairs = str("--pe1-1 %s --pe1-2 %s " % (pe1_1, pe1_2))
-    elif as_paired and pe1_s == "":  # for libraries with just PE
-        singles = ""
-        pairs = str("--pe1-1 %s --pe1-2 %s " % (pe1_1, pe1_2))
-    elif pe1_s == "":  # for libraries treating paired ends as two single-end libs
-        singles = ''
-        pairs = str("--pe1-s %s --pe2-s %s " % (pe1_1, pe1_2))
-    else:  # for 3 single end libraries
-        singles = str("--pe1-s %s " % pe1_s)
-        pairs = str("--pe2-s %s --pe3-s %s " % (pe1_1, pe1_2))
-    reads = str(pairs+singles)
-#    spades_cmds=[]
-    if prelim:
-        prelim_cmd =\
-            str(args.spades_exe + " --only-assembler --cov-cutoff off --sc --careful -k {0}" +
-                " {1} {2} -o {3}").format(kmers, reads, alt_contig, output)
-        logger.info("Running the following command:\n{0}".format(prelim_cmd))
-        subprocess.run(prelim_cmd,
-                       shell=sys.platform != "win32",
-                       stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE, check=True)
-        success = output_from_subprocess_exists(os.path.join(output,
-                                                             "contigs.fasta"))
-        if prelim and keep_best and success:
-            logger.info("reserving first contig")
-            keep_only_first_contig(str(os.path.join(output, "contigs.fasta")),
-                                   newname=
-                                       os.path.splitext(os.path.basename(seqname))[0])
-    else:
-        spades_cmd = str(args.spades_exe + " --careful -k {0} {1} {2} -o " +
-                         "{3}").format(kmers, reads, alt_contig, output)
-        logger.info("Running the following command:\n{0}".format(spades_cmd))
-        subprocess.run(spades_cmd,
-                       shell=sys.platform != "win32",
-                       stdout=subprocess.PIPE,
-                       stderr=subprocess.PIPE)
-        # not check=True; dont know spades return codes
-        success = output_from_subprocess_exists(os.path.join(output,
-                                                             "contigs.fasta"))
-    return("{0}contigs.fasta".format(os.path.join(output, "")), success)
+    def test_combine_contigs(self):
+        combined_contigs = os.path.join(os.path.dirname(test_multifasta),
+                                      "contigs_from_tests.fasta")
+        combine_contigs(os.path.dirname(test_multifasta),
+                        contigs_name="contigs_from_tests",
+                        ext=".fasta")
+        self.assertEqual(md5(test_combined), md5(combined_contigs))
+        os.remove(combined_contigs)
 
-
-def run_quast(contigs, output, ref=""):
-    """Reference is optional. This is, honestly, a pretty dumb feature
-    """
-    if not ref == "":
-        ref = str("-R %s" % ref)
-    quast_cmd = str(args.quast_exe + " {0} {1} -o " +
-                    "{2}").format(contigs, ref, output)
-    logger.info("Running quast as follows: {0}".format(quast_cmd))
-    subprocess.run(quast_cmd,
-                   shell=sys.platform != "win32",
-                   stdout=subprocess.PIPE,
-                   stderr=subprocess.PIPE)
-
-
-
-
-def combine_contigs(mauve_path, contigs_name="riboSeedContigs_aggregated"):
-    """changed over to biopython
-    combine all *.fasta in dir, return path to concatenated file
-    requires Bio.SeqIO, glob, os
-    """
-    output = os.path.join(mauve_path, str(contigs_name+".fasta"))
-    fastas = glob.glob(str(mauve_path+"*.fasta"))
-    with open(output, 'w') as w_file:
-        for filen in fastas:
-            with open(filen, 'rU') as o_file:
-                seq_records = SeqIO.parse(o_file, 'fasta')
-                SeqIO.write(seq_records, w_file, 'fasta')
-
-    return(output)
+    def tearDown(self):
+        pass
+##  Functions to write tests for
 
 
 def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
@@ -249,7 +191,7 @@ def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
     if makeblastdb_exe == '':
         makeblastdb_exe = shutil.which("makeblastdb")
     makedbcmd = str("{0} -in {1} -input_type {2} -dbtype {3} " +
-                    "-title {4} -out {5}").format(makeblastdb_exe, 
+                    "-title {4} -out {5}").format(makeblastdb_exe,
                         input_file, input_type, dbtype, title, out)
     logger.info("Making blast db: {0}".format(makedbcmd))
     try:
@@ -261,7 +203,7 @@ def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
         return(0)
     except:
         logging.error("Something bad happened when trying to make " +
-                     "a blast database")
+                      "a blast database")
         sys.exit(1)
 
 
@@ -302,7 +244,7 @@ def merge_blast_tab_outfiles(filelist, outfile_name):
     requires logging
     """
     # only grab .tab files, ie, the blast output
-    logger=logging.getLogger()
+    logger = logging.getLogger()
     filelist = [i for i in filelist if i.split(".")[-1:] == ['tab']]
     if len(filelist) == 1:
         logger.warning("only one file found! no merging needed")
@@ -327,11 +269,12 @@ def merge_blast_tab_outfiles(filelist, outfile_name):
         return(0)
 
 
-def cleanup_output_to_csv(infile, accession_pattern='(?P<accession>[A-Z _\d]*\.\d*)'):
+def cleanup_output_to_csv(infile,
+                          accession_pattern='(?P<accession>[A-Z _\d]*\.\d*)'):
     """
     given .tab from merge_blast_tab_outfiles, assign pretty column names,
     """
-    logger=logging.getLogger(name=None)
+    logger = logging.getLogger(name=None)
     print("cleaning up the csv output")
     colnames = ["query_id", "subject_id", "identity_perc", "alignment_length", "mismatches",
                 "gap_opens", "q_start", "q_end", "s_start", "s_end", "evalue", "bit_score"]
@@ -350,25 +293,34 @@ def cleanup_output_to_csv(infile, accession_pattern='(?P<accession>[A-Z _\d]*\.\
 
 
 if __name__ == '__main__':
-    # logger = utils3_5.set_up_logging(verbosity=1, name=__name__,
-    #                                  outfile=os.path.join(curdir, 
-    #                                                       "tests_logger.txt"))
-    curdir=os.getcwd()
-    samtools_exe="/usr/bin/samtools"
-    testdirname=os.path.join(os.path.dirname(__file__), "utils3_5tests")
-    test_fastq_file = os.path.join(os.path.dirname(__file__), 
-                                   str("references"+os.path.sep+'test_reads.fastq'))
+    args = get_args()
+    curdir = os.getcwd()
+    samtools_exe = "/usr/bin/samtools"
+    testdirname = os.path.join(os.path.dirname(__file__), "utils3_5tests")
+    test_fastq_file = os.path.join(os.path.dirname(__file__),
+                                   str("references" + os.path.sep +
+                                       'test_reads.fastq'))
     test_bam_file = os.path.join(os.path.dirname(__file__),
-                                   str("references"+os.path.sep+
+                                   str("references" + os.path.sep +
                                        "pyutilsnrw_sample.bam"))
-    test_bam_mapped_file = os.path.join(os.path.dirname(__file__), 
-                                   str("references"+os.path.sep+
+    test_bam_mapped_file = os.path.join(os.path.dirname(__file__),
+                                   str("references" + os.path.sep +
                                        "pyutilsnrw_sample_mapped.bam"))
-    test_multifasta = os.path.join(os.path.dirname(__file__), 
-                                   str("references"+os.path.sep+
+    test_multifasta = os.path.join(os.path.dirname(__file__),
+                                   str("references" + os.path.sep +
                                        "test_multiseqs_reference.fasta"))
-    test_singlefasta = os.path.join(os.path.dirname(__file__), 
-                                   str("references"+os.path.sep+
+    test_singlefasta = os.path.join(os.path.dirname(__file__),
+                                   str("references" + os.path.sep +
                                        "test_only_first_reference.fasta"))
-    clean_temp = True
+    test_combined = os.path.join(os.path.dirname(__file__),
+                                   str("references" + os.path.sep +
+                                       "contigs_from_tests_reference.fa"))
+    utils3_5TestCase.keep_temps = args.keep_temps
     unittest.main()
+    # suite = unittest.TestSuite()
+    # keep_temps=args.keep_temps
+    # suite = unittest.defaultTestLoader.loadTestsFromTestCase(utils3_5TestCase)
+    # suite.addTest(utils3_5TestCase("tearDown", keep_temps))
+    # unittest.utils3_5TestCase().run(suite)
+    if not args.keep_temps:
+        os.rmdir(testdirname)

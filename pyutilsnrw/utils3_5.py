@@ -7,6 +7,9 @@ python 3.5 functions or templates
 
 Minor version changes:
 - added explicit if logger:
+- added hashlib, re, various bits and bobs
+- found bug in combine_contigs that ignored dir if didnt end in
+  path sep
 """
 __version__ = "0.0.3"
 import time
@@ -18,8 +21,12 @@ import os
 from Bio import SeqIO
 import hashlib
 import re
+import glob
+import gzip
 
 logger = logging.getLogger('root')
+
+
 def get_args_template():
     """
     Template for argument parsing; dont import this, by the way
@@ -180,7 +187,7 @@ def set_up_root_logging(verbosity, outfile):
         sys.exit(1)
     # define a Handler which writes INFO messages or higher to the sys.stderr
     console = logging.StreamHandler(sys.stderr)
-    console.setLevel(level=(verbosity *10))
+    console.setLevel(level = (verbosity *10))
     # set a format which is simpler for console use
     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     # tell the handler to use this format
@@ -190,7 +197,7 @@ def set_up_root_logging(verbosity, outfile):
     # Now, we can log to the root logger, or any other logger. First the root...
     logging.info("Initializing logger")
     logging.debug("logging at level {0}".format(verbosity))
-    logger = logging.getLogger()    
+    logger = logging.getLogger()
     return(logger)
 
 
@@ -208,53 +215,6 @@ def make_outdir(path, logger=None):
                 logger.error("Cannot make directory {0}!".format(path))
             sys.exit(1)
 
-# def last_exception():
-#     """ From Pyani
-#     Returns last exception as a string, or use in logging.
-#     """
-#     exc_type, exc_value, exc_traceback = sys.exc_info()
-#     return(''.join(traceback.format_exception(exc_type, exc_value,
-#                                               exc_traceback)))
-
-# # def make_outdir_carful(dirname):
-# def make_outdir(dirname):
-#     """ From Pyani
-#     Make the output directory, if required.
-#     This is a little involved.  If the output directory already exists,
-#     we take the safe option by default, and stop with an error.  We can,
-#     however, choose to force the program to go on, in which case we can
-#     either clobber the existing directory, or not.  The options turn out
-#     as the following, if the directory exists:
-#     DEFAULT: stop and report the collision
-#     FORCE: continue, and remove the existing output directory
-#     NOCLOBBER+FORCE: continue, but do not remove the existing output
-#     """
-#     if os.path.exists(dirname):
-#         if not args.force:
-#             logger.error("Output directory %s would " % dirname +
-#                          "overwrite existing files (exiting)")
-#             sys.exit(1)
-#         else:
-#             logger.info("Removing directory %s and everything below it" %
-#                         dirname)
-#             if args.noclobber:
-#                 logger.warning("NOCLOBBER: not actually deleting directory")
-#             else:
-#                 shutil.rmtree(args.output)
-#     logger.info("Creating directory %s" % dirname)
-#     try:
-#         os.makedirs(dirname)   # We make the directory recursively
-#         # Depending on the choice of method, a subdirectory will be made for
-#         # alignment output files
-#     except OSError:
-#         # This gets thrown if the directory exists. If we've forced overwrite/
-#         # delete and we're not clobbering, we let things slide
-#         if args.noclobber and args.force:
-#             logger.info("NOCLOBBER+FORCE: not creating directory")
-#         else:
-#             logger.error(last_exception)
-#             sys.exit(1)
-
 
 #def make_output_prefix(map_output_dir, exp_name):
 def make_output_prefix(output_dir, name, logger=None):
@@ -269,7 +229,7 @@ def make_output_prefix(output_dir, name, logger=None):
 #def copy_ref_to_temp(current_file, dest_dir, overwrite=False):
 def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
     """Copy reference fasta file to dest_dir to avoid making messy
-    indexing files everywhere (generated during mapping).  
+    indexing files everywhere (generated during mapping).
     There is an option to rename resulting file. Probably could all be done
     with shutil.copyfile, but I cant figure a way to handle the errors as well..
     This uses a system call to "rm x -f"; is this safe? I have to have the
@@ -280,13 +240,14 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
         new_file_name = str(name)
     else:
         new_file_name = os.path.basename(current_file)
-    new_ref = os.path.join(dest_dir, name)
+    new_ref = os.path.join(dest_dir, new_file_name)
     if os.path.exists(new_ref):
         if overwrite:
             try:
                 rm_cmd = "rm -f {0}".format(new_ref)
                 if logger:
-                    logger.debug("removing {0} to be overwritten with {1}.".format(
+                    logger.debug(str("removing {0} to be overwritten " +
+                                     "with {1}.").format(
                         new_ref, current_file))
                     logger.debug(rm_cmd)
                 subprocess.run(rm_cmd, shell=sys.platform != "win32",
@@ -294,16 +255,18 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
                                stderr=subprocess.PIPE, check=True)
             except:
                 if logger:
-                    logger.error("couldn't overwrite file with copy_ref_to_temp")
+                    logger.error(str("couldn't overwrite file with" +
+                                     " copy_ref_to_temp"))
                 sys.exit(1)
         else:
             if logger:
-                logger.error("cannot overwrite {0} to {1}".format(new_ref,
-                                                                  current_file))
+                logger.error(str("cannot overwrite {0} " +
+                             "to {1}").format(new_ref, current_file))
             sys.exit(1)
     else:
         if logger:
-            logger.info("copying fasta from %s to %s" % (current_file, new_ref))
+            logger.info(str("copying fasta from {0} to " +
+                            "{1}").format(current_file, new_ref))
     cmd = str("cp %s %s" % (current_file, new_ref))
     subprocess.run(cmd, shell=sys.platform != "win32",
                    stdout=subprocess.PIPE,
@@ -326,8 +289,6 @@ def check_installed_tools(list_of_tools, logger=None):
                 logger.debug("{0} executable found".format(i))
 
 
-
-
 def get_ave_read_len_from_fastq(fastq1, N=50, logger=None):
     """from LP; return average read length in fastq1 file from first N reads
     """
@@ -343,9 +304,11 @@ def get_ave_read_len_from_fastq(fastq1, N=50, logger=None):
         if count >= N:
             break
     if logger:
-        logger.info("From the first {0} reads in {1}, mean length is {2}".format(
-            N, os.path.basename(fastq1), float(tot/count)))
-    return(float(tot/count))
+        logger.info(str("From the first {0} reads in {1}, " +
+                        "mean length is {2}").format(N,
+                                                     os.path.basename(fastq1),
+                                                     float(tot / count)))
+    return(float(tot / count))
 
 
 #def get_number_mapped(bam):
@@ -354,13 +317,15 @@ def get_number_mapped(bam, samtools_exe, logger=None):
     returns a string to be printed, the 4th line of flagstat
     requires subprocess, sys, logger (SAMtools)
     """
-    flagstats = subprocess.run(str("{0} flagstat {1}").format(samtools_exe, bam),
+    flagstatcmd = str("{0} flagstat {1}").format(samtools_exe, bam)
+    flagstats = subprocess.run(flagstatcmd,
                                shell=sys.platform != "win32",
                                stdout=subprocess.PIPE,
                                stderr=subprocess.PIPE,
                                check=True)
     try:
         printout = flagstats.stdout.decode("utf-8").split("\n")[4]
+        #TODO test for none mapped
     except IndexError:
         if logger:
             logger.error("Error reading {0}".format(bam))
@@ -368,18 +333,18 @@ def get_number_mapped(bam, samtools_exe, logger=None):
     return(printout)
 
 
-def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates, keep_unmapped,
-                                       samtools_exe, logger=None):
+def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates,
+                                   keep_unmapped, samtools_exe, logger=None):
     """
-    IF fetch_mates is true, mapped reads are extracted, 
-    and mates are feteched with the LC_ALL line.If not, that part is 
+    IF fetch_mates is true, mapped reads are extracted,
+    and mates are feteched with the LC_ALL line.If not, that part is
     skipped, and just the mapped reads are extracted.
-    Setting keep_unmapped to true will output a bam file with 
-    all the remaining reads.  This could be used if you are really confident 
+    Setting keep_unmapped to true will output a bam file with
+    all the remaining reads.  This could be used if you are really confident
     there are no duplicate mappings you are interested in.
      -F 4 option selects mapped reads
-    Note that the umapped output includes reads whose pairs were mapped.  This is
-    to try to catch the stragglers.
+    Note that the umapped output includes reads whose pairs were mapped.
+    This is to try to catch the stragglers.
     LC_ALL=C  call from pierre lindenbaum. No idea how it does, but its magic
     """
     extract_cmds = []
@@ -387,7 +352,7 @@ def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates, keep_unmappe
     if fetch_mates:
         samview = str(samtools_exe + "  view -h -F 4 {0}.bam  | cut -f1 > " +
                       "{0}_mappedIDs.txt").format(map_results_prefix)
-        lc_cmd = str("LC_ALL=C grep -w -F -f {0}_mappedIDs.txt  < {0}.sam >  " +
+        lc_cmd = str("LC_ALL=C grep -w -F -f {0}_mappedIDs.txt  < {0}.sam > " +
                      "{0}_mapped.sam").format(map_results_prefix)
         extract_cmds.extend([samview, lc_cmd])
     else:
@@ -395,17 +360,20 @@ def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates, keep_unmappe
                       "{0}_mapped.sam").format(map_results_prefix)
         extract_cmds.extend([samview])
     samsort = str(samtools_exe + " view -bhS {0}_mapped.sam " +
-                  "| samtools sort - > {0}_mapped.bam").format(map_results_prefix)
-    samindex = str(samtools_exe + " index {0}_mapped.bam").format(map_results_prefix)
+                  "| samtools sort - > " +
+                  "{0}_mapped.bam").format(map_results_prefix)
+    samindex = " {0} index {1}_mapped.bam".format(samtools_exe,
+                                                  map_results_prefix)
     extract_cmds.extend([samsort, samindex])
     if keep_unmapped:
         samviewU = str(samtools_exe + "  view -f 4 {0}.bam  | cut -f1 > " +
                        "{0}_unmappedIDs.txt").format(map_results_prefix)
         lc_cmdU = str("LC_ALL=C grep -w -F -f {0}_unmappedIDs.txt  < " +
                       "{0}.sam > {0}_unmapped.sam").format(map_results_prefix)
-        samindexU = str(samtools_exe + " view -bhS {0}_unmapped.sam | samtools " +
+        samindexU = str("{1} view -bhS {0}_unmapped.sam | samtools " +
                         "sort - -o {0}_unmapped.bam && samtools index " +
-                        "{0}_unmapped.bam").format(map_results_prefix)
+                        "{0}_unmapped.bam").format(map_results_prefix,
+                                                   samtools_exe)
         extract_cmds.extend([samviewU, lc_cmdU, samindexU])
     if logger:
         logger.debug("running the following commands to extract reads:")
@@ -418,8 +386,9 @@ def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates, keep_unmappe
 
 
 #def clean_temp_dir(map_output_dir):
-def clean_temp_dir(temp_dir):
-    """ from http://stackoverflow.com/questions/185936/delete-folder-contents-in-python
+def clean_temp_dir(temp_dir, logger=None):
+    """ from http://stackoverflow.com/questions/
+            185936/delete-folder-contents-in-python
         this should fail on read-only files
         requires shutil, os
     """
@@ -431,11 +400,14 @@ def clean_temp_dir(temp_dir):
             elif os.path.isdir(file_path):
                 shutil.rmtree(file_path)
         except Exception as e:
-            print(e)
+            if logger:
+                logger.error(e)
+            sys.exit(1)
 
 
 def output_from_subprocess_exists(output):
-    """just what it says: given an output path or dir, return True if it exists
+    """just what it says: given an output path or dir,
+    return True if it exists
     requires os
     """
     if os.path.exists(output):
@@ -446,7 +418,7 @@ def output_from_subprocess_exists(output):
 
 def keep_only_first_contig(ref, newname="contig1"):
     #TODO make a biopython version
-    """ 
+    """
     given a multi fasta from SPAdes, extract first entry,
     rename "NODE_1" with newname, overwrite file
     requires os, re
@@ -463,7 +435,8 @@ def keep_only_first_contig(ref, newname="contig1"):
         with open(ref, "r") as file_handle:
             lines = file_handle.readlines()
             if lines[0][0] != ">":
-                raise ValueError("Something wrong with spades output contig! Not a valid fasta!")
+                raise ValueError(str("Error  with spades output contig!" +
+                                     " Not a valid fasta!"))
             new_header = str(re.sub("NODE_\d*", newname, str(lines[0])))
             outfile.write(new_header)
             for line in range(1, len(lines)):
@@ -546,8 +519,8 @@ def run_quast(contigs, output, quast_exe, ref="", logger=None):
     """
     if not ref == "":
         ref = str("-R %s" % ref)
-    quast_cmd = str(args.quast_exe + " {0} {1} -o " +
-                    "{2}").format(contigs, ref, output)
+    quast_cmd = str("{3}  {0} {1} -o " +
+                    "{2}").format(contigs, ref, output, quast_exe)
     if logger:
         logger.info("Running quast as follows: {0}".format(quast_cmd))
     subprocess.run(quast_cmd,
@@ -556,16 +529,21 @@ def run_quast(contigs, output, quast_exe, ref="", logger=None):
                    stderr=subprocess.PIPE)
 
 
-
-
-def combine_contigs(mauve_path, contigs_name="riboSeedContigs_aggregated",
-                      ext=".fasta"):
+def combine_contigs(contigs_dir, contigs_name="riboSeedContigs_aggregated",
+                    ext=".fasta", logger=None):
     """changed over to biopython
     combine all *ext files in dir, return path to concatenated file
     requires Bio.SeqIO, glob, os
     """
-    output = os.path.join(mauve_path, str(contigs_name+ext))
-    fastas = glob.glob(str(mauve_path+"*"+ext))
+    if contigs_dir[-1] != os.path.sep:
+        contigs_dir = str(contigs_dir + os.path.sep)
+    output = os.path.join(contigs_dir, str(contigs_name + ext))
+    fastas = glob.glob(str(contigs_dir + "*" + ext))
+    print(fastas)
+    if len(fastas) == 0:
+        if logger:
+            logger.error("No contig files found to combine in {0}!".format(contigs_dir))
+        sys.exit(1)
     with open(output, 'w') as w_file:
         for filen in fastas:
             with open(filen, 'rU') as o_file:
@@ -588,8 +566,10 @@ def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
     if makeblastdb_exe == '':
         makeblastdb_exe = shutil.which("makeblastdb")
     makedbcmd = str("{0} -in {1} -input_type {2} -dbtype {3} " +
-                    "-title {4} -out {5}").format(makeblastdb_exe, 
-                        input_file, input_type, dbtype, title, out)
+                    "-title {4} -out {5}").format(makeblastdb_exe,
+                                                  input_file,
+                                                  input_type,
+                                                  dbtype, title, out)
     if logger:
         logger.info("Making blast db: {0}".format(makedbcmd))
     try:
@@ -646,7 +626,7 @@ def merge_blast_tab_outfiles(filelist, outfile_name, logger=None):
     requires logging
     """
     # only grab .tab files, ie, the blast output
-    logger=logging.getLogger()
+    # logger=logging.getLogger()
     filelist = [i for i in filelist if i.split(".")[-1:] == ['tab']]
     if len(filelist) == 1:
         if logger:
@@ -674,7 +654,7 @@ def merge_blast_tab_outfiles(filelist, outfile_name, logger=None):
         return(0)
 
 
-def cleanup_output_to_csv(infile, 
+def cleanup_output_to_csv(infile,
                           accession_pattern='(?P<accession>[A-Z _\d]*\.\d*)',
                           logger=None):
     """
@@ -692,12 +672,11 @@ def cleanup_output_to_csv(infile,
     # write out results with new headers or with new headers and merged metadat from accessions.tab
     genes = open(genelist, "r")
     genedf = pd.read_csv(genes, sep=",")
-    output_path_csv = str(os.path.splitext(infile)[0]+".csv")
+    output_path_csv = str(os.path.splitext(infile)[0] + ".csv")
     results_annotated = pd.merge(csv_results, genedf, how="left",  on="accession")
     results_annotated.to_csv(open(output_path_csv, "w"))
     print("wrote final csv to %s" % output_path_csv)
 #%%
-
 
 
 def md5(fname):
@@ -709,3 +688,34 @@ def md5(fname):
         for chunk in iter(lambda: f.read(4096), b""):
             hash_md5.update(chunk)
     return(hash_md5.hexdigest())
+
+
+def check_single_scaffold(input_genome_path):
+    """Test for single scaffold.
+    """
+    print("testing for multiple scaffolds...")
+    counter = -1  # if all goes well, returns 0, else returns 1 or more or -1
+    for line in open(input_genome_path, "r"):
+        if re.search("ORIGIN", line) is not None:
+            counter = counter + 1
+    return(counter)
+
+
+def get_genbank_record(input_genome_path):
+    """reads the FIRST record only from a genbank file; will probably only work for first scaffold
+    """
+    print("Reading genbank file...")
+    with open(input_genome_path) as input_genome_handle:
+        genome_seq_record = next(SeqIO.parse(input_genome_handle, "genbank"))
+    # if genome_sequence[0: 100] == str("N" * 100):
+    #     print("Careful: the first 100 nucleotides are N's; did you download the full .gb file?")
+    return(genome_seq_record)
+
+
+def get_genbank_seq(input_genome_path):
+    """get the sequence from the FIRST record only in a genbank file
+    """
+    print("fetching nucleotide sequence from genbank file...")
+    with open(input_genome_path) as input_genome_handle:
+        genome_seq_record = next(SeqIO.parse(input_genome_handle, "genbank"))
+    return(genome_seq_record.seq)
