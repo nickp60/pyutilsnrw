@@ -13,6 +13,7 @@ install:
    - pip3.5 install -r requirements.txt
 # running script
 script: 
+   - ./debug_travis.sh 
    - python3.5 setup.py install
    - python3.5 tests/utils3_5_tests.py
    - coverage tests/utils3_5_tests.py
