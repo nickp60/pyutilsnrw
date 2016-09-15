@@ -1,1 +1,3 @@
 Biopython==1.68
+coverage
+nosetests

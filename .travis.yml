@@ -2,6 +2,11 @@ language: python
 python:
   - "3.5"
 # command to install dependencies
-install: "pip3.5 install -r requirements.txt"
+install: 
+   - pip3.5 install -r requirements.txt
 # running script
-script: python3.5 tests/ustil3_5_tests.py
+script: 
+   - python3.5 setup.py install
+   - python3.5 tests/util3_5_tests.py
+   - nosetests --with-coverage # Add me to run nose with coverage support.
+
