@@ -5,11 +5,17 @@ python:
 before install:
   - sudo apt-get -qq update
   - sudo apt-get install samtools
+  - echo "$PATH"
+  - echo "which samtools"
+ 
 install: 
+   - pip3.5 install coveralls
    - pip3.5 install -r requirements.txt
 # running script
 script: 
    - python3.5 setup.py install
    - python3.5 tests/utils3_5_tests.py
+   - coverage tests/utils3_5_tests.py
 #   - nosetests --with-coverage # Add me to run nose with coverage support.
-
+after_success:
+  coveralls
