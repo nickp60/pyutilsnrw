@@ -4,7 +4,7 @@ python:
 # command to install dependencies
 before install:
   - sudo apt-get -qq update
-  - sudo apt-get install samtools
+  - sudo apt-get install -y samtools
   - echo "$PATH"
   - echo "which samtools"
  
