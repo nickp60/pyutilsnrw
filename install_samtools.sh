@@ -6,4 +6,4 @@ tar xf samtools-1.3.1.tar.bz2
 cd samtools-1.3.1/
 make
 make prefix=/home/travis/ install
-
+export samtools=/home/travis/bin/samtools

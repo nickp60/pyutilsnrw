@@ -46,10 +46,6 @@ def get_args():
                         action="store_true",
                         help="set if you want to inspect the output files",
                         default=False)
-    parser.add_argument("-s", "--samtools_exe", dest='samtools_exe',
-                        action="store",
-                        help="to set the path manually for the samtools exe",
-                        default=False)
     args = parser.parse_args()
     return(args)
 
@@ -320,7 +316,7 @@ if __name__ == '__main__':
                                    str("references" + os.path.sep +
                                        "contigs_from_tests_reference.fa"))
     utils3_5TestCase.keep_temps = args.keep_temps
-    utils3_5TestCase.samtools_exe = args.samtools_exe
+    utils3_5TestCase.samtools_exe = "samtools"
     unittest.main()
     # suite = unittest.TestSuite()
     # keep_temps=args.keep_temps
