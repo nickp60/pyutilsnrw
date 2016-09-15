@@ -54,12 +54,16 @@ def get_args():
                  "Subprocess.call, among otherthings wont run if you try this" +
                  " with less than python 3.5")
 class utils3_5TestCase(unittest.TestCase):
-    keep_temps = False
-    # def __init__(self, testname, keep_temps):
-    #     super(utils3_5TestCase, self).__init__(testname)
-    #     self.keep_temps = keep_temps
+    # def init(self):
     #     pass
-
+    # keep_temps = False
+    # self.samtools = "test"
+    # # samtools_exe = "samtoolz"
+    # # def __init__(self, testname, keep_temps):
+    # #     super(utils3_5TestCase, self).__init__(testname)
+    # #     self.keep_temps = keep_temps
+    # #     pass
+    # print(self.samtools)
     def setUp(self):
         pass
 
@@ -136,7 +140,6 @@ class utils3_5TestCase(unittest.TestCase):
         # reference mapping md5
         mapped_md5 = "27944249bf064ba54576be83053e82b0"
         md5_returned = md5(str(prefix + "_mapped.sam"))
-
         # Finally compare original MD5 with freshly calculated
         self.assertEqual(mapped_md5, md5_returned)
         # delete files created
@@ -316,7 +319,7 @@ if __name__ == '__main__':
                                    str("references" + os.path.sep +
                                        "contigs_from_tests_reference.fa"))
     utils3_5TestCase.keep_temps = args.keep_temps
-    utils3_5TestCase.samtools_exe = "samtools"
+    samtools_exe = "samtools"
     unittest.main()
     # suite = unittest.TestSuite()
     # keep_temps=args.keep_temps
