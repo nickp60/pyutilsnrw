@@ -295,7 +295,7 @@ def cleanup_output_to_csv(infile,
 if __name__ == '__main__':
     args = get_args()
     curdir = os.getcwd()
-    samtools_exe = "/usr/bin/samtools"
+    samtools_exe = "samtools"
     testdirname = os.path.join(os.path.dirname(__file__), "utils3_5tests")
     test_fastq_file = os.path.join(os.path.dirname(__file__),
                                    str("references" + os.path.sep +
