@@ -7,6 +7,6 @@ install:
 # running script
 script: 
    - python3.5 setup.py install
-   - python3.5 tests/util3_5_tests.py
+   - python3.5 tests/utils3_5_tests.py
 #   - nosetests --with-coverage # Add me to run nose with coverage support.
 
