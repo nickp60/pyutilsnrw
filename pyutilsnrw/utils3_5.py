@@ -531,8 +531,8 @@ def run_quast(contigs, output, quast_exe, ref="", logger=None):
                    stderr=subprocess.PIPE)
 
 
-def combine_contigs(contigs_dir, contigs_name="riboSeedContigs_aggregated",
-                    ext=".fasta", logger=None):
+def combine_contigs(contigs_dir, pattern = "*", contigs_name="riboSeedContigs_aggregated",
+                    ext=".fasta", verbose=False, logger=None):
     """changed over to biopython
     combine all *ext files in dir, return path to concatenated file
     requires Bio.SeqIO, glob, os
@@ -540,8 +540,14 @@ def combine_contigs(contigs_dir, contigs_name="riboSeedContigs_aggregated",
     if contigs_dir[-1] != os.path.sep:
         contigs_dir = str(contigs_dir + os.path.sep)
     output = os.path.join(contigs_dir, str(contigs_name + ext))
-    fastas = glob.glob(str(contigs_dir + "*" + ext))
-#    print(fastas)
+    fastas = glob.glob(str(contigs_dir + pattern + ext))
+    fastas.sort()
+    if verbose:
+        print(str("combining the following files matching pattern " +
+                  "{0}:{1}".format(pattern, " ".join(fastas))))
+    if logger:
+        logger.info(str("combining the following files matching pattern " +
+                        "{0}:{1}".format(pattern, " ".join(fastas))))
     if len(fastas) == 0:
         if logger:
             logger.error("No contig files found to combine in {0}!".format(contigs_dir))

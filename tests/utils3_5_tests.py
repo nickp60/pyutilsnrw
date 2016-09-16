@@ -110,7 +110,7 @@ class utils3_5TestCase(unittest.TestCase):
         """ is this paranoia, as well as bad testing?
         """
         test_pairs = \
-                     [["addeb71bc8d4055dcefea3fababe3207",
+                     [["3ba332f8a3b5d935ea6c4e410ccdf44b",
                        "references/combined_contigs_reference.fa"],
                       ["939fbf2c282091aec0dfa278b05e94ec",
                        "references/mapping_reference.bam"],
@@ -232,13 +232,15 @@ class utils3_5TestCase(unittest.TestCase):
                                           logger=None)
         for_first_contig = copy_file(current_file=test_multifasta,
                                      dest_dir=testdirname,
-                                     name='for_first_contig.fasta',
+                                     name='single_fasta_test_combine.fasta',
                                      overwrite=False,
                                      logger=None)
         keep_only_first_contig(for_first_contig, newname="contig1")
         combined_contigs = combine_contigs(testdirname,
+                                           pattern="*test_combine",
                                            contigs_name="combined_contigs.fa",
-                                           ext=".fasta")
+                                           ext=".fasta",
+                                           verbose=True)
         self.assertEqual(md5(test_combined), md5(combined_contigs))
         for i in [duplicated_multifasta, for_first_contig, combined_contigs]:
             os.remove(i)
