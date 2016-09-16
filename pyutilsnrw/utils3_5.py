@@ -235,6 +235,7 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
     This uses a system call to "rm x -f"; is this safe? I have to have the
     -f flag because otherwise it prompts, which disrumpt the flow.
     require shutil, logger, subprocess, sys, os, subprocess
+    returns new path
     """
     if type(name) is str and name != "":
         new_file_name = str(name)
@@ -336,6 +337,7 @@ def get_number_mapped(bam, samtools_exe, logger=None):
 def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates,
                                    keep_unmapped, samtools_exe, logger=None):
     """
+    Take a prefix for a dir containing your mapped bam file.
     IF fetch_mates is true, mapped reads are extracted,
     and mates are feteched with the LC_ALL line.If not, that part is
     skipped, and just the mapped reads are extracted.
@@ -539,14 +541,14 @@ def combine_contigs(contigs_dir, contigs_name="riboSeedContigs_aggregated",
         contigs_dir = str(contigs_dir + os.path.sep)
     output = os.path.join(contigs_dir, str(contigs_name + ext))
     fastas = glob.glob(str(contigs_dir + "*" + ext))
-    print(fastas)
+#    print(fastas)
     if len(fastas) == 0:
         if logger:
             logger.error("No contig files found to combine in {0}!".format(contigs_dir))
         sys.exit(1)
     with open(output, 'w') as w_file:
         for filen in fastas:
-            with open(filen, 'rU') as o_file:
+            with open(filen, 'r') as o_file:
                 seq_records = SeqIO.parse(o_file, 'fasta')
                 SeqIO.write(seq_records, w_file, 'fasta')
 
@@ -679,15 +681,19 @@ def cleanup_output_to_csv(infile,
 #%%
 
 
-def md5(fname):
+def md5(fname, string=False):
     """straight from quantumsoup
     http://stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file
+    updated 20160916 for strings; if true, fname can be a string
     """
-    hash_md5 = hashlib.md5()
-    with open(fname, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), b""):
-            hash_md5.update(chunk)
-    return(hash_md5.hexdigest())
+    if string:
+        return(hashlib.md5(fname.encode('utf-8')).hexdigest())
+    else:
+        hash_md5 = hashlib.md5()
+        with open(fname, "rb") as f:
+            for chunk in iter(lambda: f.read(4096), b""):
+                hash_md5.update(chunk)
+            return(hash_md5.hexdigest())
 
 
 def check_single_scaffold(input_genome_path):
