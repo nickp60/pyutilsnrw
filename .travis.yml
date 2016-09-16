@@ -17,7 +17,7 @@ script:
    - ./debug_travis.sh 
    - python3.5 setup.py install
    - python3.5 tests/utils3_5_tests.py
-   - coverage tests/utils3_5_tests.py
+   - coverage run tests/utils3_5_tests.py
 #   - nosetests --with-coverage # Add me to run nose with coverage support.
 after_success:
   coveralls
