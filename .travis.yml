@@ -1,31 +1,27 @@
 language: python
 python:
-  - "3.5"
-# command to install dependencies
+- '3.5'
 before install:
-  - sudo apt-get -qq update
-  - sudo apt-get install -y samtools
-  - echo "$PATH"
-  - echo "which samtools"
- 
-install: 
-   - pip3.5 install coveralls
-   - pip3.5 install -r requirements.txt
-# running script
-script: 
-   - ./install_samtools.sh 
-   - ./debug_travis.sh 
-   - python3.5 setup.py install
-   - python3.5 tests/utils3_5_tests.py
-   - coverage run tests/utils3_5_tests.py
-#   - nosetests --with-coverage # Add me to run nose with coverage support.
-after_success:
-  coveralls
-
+- sudo apt-get -qq update
+- sudo apt-get install -y samtools
+- echo "$PATH"
+- echo "which samtools"
+install:
+- pip3.5 install coveralls
+- pip3.5 install -r requirements.txt
+script:
+- "./install_samtools.sh"
+- "./debug_travis.sh"
+- python3.5 setup.py install
+- python3.5 tests/utils3_5_tests.py
+- coverage run tests/utils3_5_tests.py
+after_success: coveralls
 deploy:
   provider: pypi
-  user: "NickWaters"
-  password: "ihatecoriander4life"
-  server: https://testpypi.python.org/pypi
+  user: NickWaters
+  password:
+    secure: DKvT3rrQzcASoXMCc15+TDM8G2d3jfF4o5iKGK+lHz/7tRAC6pDAyF3DhMAHF3ZF23d0jSebgPbAPMSFqKvdJlBYI69QXNeiE1YdSwRBFKTVpJJ+Ba0+dBTqnY/QLIDfzlTUwuGdRrkI22T9EWNcHUFRu3YQkQkWo44qQtcArpZE9P22/XYc0zUKuVgY/0pvZBjJCv/fBcS3n4keK3iVuV2iUqgTenPo9M/30HT0pHvfkQLswVKkDSME6KiwNFC0Duk1M17/iKC1IaVzVyeQ1gN+im6d3hQrvBv3KUF6zbUCv2Jz8QMxD4FtvHZ5ZZZacUcTlaIWpzovk+U6y+U7LHyYG+HDz0Oh4NHaJe1xiWgWmBx3Xb1HLi+oyvhPwJAptee5Q0SFiTKvghFWyvWGpYOLmHhhOAbytp1dz2boxLjw8weK+Z7j0lohKijztDy81JhFnzTLjprN+9rBC9q4vSIG9kUDK/9TCqcvIM2kCR2kOe03L8Cc++6k1Z73oOMZWj+bZSXYGhnZLwqaKde8YEQYI9anRXG/t+wbBcdbLjDjhqDnI4BHuwKwM6mC7jIdm+IOD3Ya3jBz+ryP7wKsXkW/c8qW7QTzny4OGhFQPZ78LaYwC/k/vBeHc2qhPGmTrRn3Ea7yhnz5R5WMAUt93Ml/UFoKek0x51QzSJz9+e8=
   on:
     tags: true
+    distributions: sdist bdist_wheel
+    repo: nickp60/pyutilsnrw
