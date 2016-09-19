@@ -51,7 +51,7 @@ def get_args():
 
 
 @unittest.skipIf((sys.version_info[0] != 3) or (sys.version_info[1] < 5),
-                 "Subprocess.call, among otherthings wont run if you try this" +
+                 "Subprocess.call among otherthings wont run if you try this" +
                  " with less than python 3.5")
 class utils3_5TestCase(unittest.TestCase):
     # def init(self):
@@ -101,16 +101,15 @@ class utils3_5TestCase(unittest.TestCase):
     def test_md5_strings(self):
         """ minimal md5 examples
         """
-        self.assertEqual(md5("thisstringisidenticalto",string=True),
-                         md5("thisstringisidenticalto",string=True))
-        self.assertNotEqual(md5("thisstringisntidenticalto",string=True),
-                         md5("thisstringisnotidenticalto",string=True))
+        self.assertEqual(md5("thisstringisidenticalto", string=True),
+                         md5("thisstringisidenticalto", string=True))
+        self.assertNotEqual(md5("thisstringisntidenticalto", string=True),
+                            md5("thisstringisnotidenticalto", string=True))
 
     def test_references_md5(self):
         """ is this paranoia, as well as bad testing?
         """
-        test_pairs = \
-                     [["3ba332f8a3b5d935ea6c4e410ccdf44b",
+        test_pairs = [["3ba332f8a3b5d935ea6c4e410ccdf44b",
                        "references/combined_contigs_reference.fa"],
                       ["939fbf2c282091aec0dfa278b05e94ec",
                        "references/mapping_reference.bam"],

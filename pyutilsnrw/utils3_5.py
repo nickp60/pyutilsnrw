@@ -23,6 +23,8 @@ import hashlib
 import re
 import glob
 import gzip
+import errno
+import argparse
 
 logger = logging.getLogger('root')
 
@@ -48,7 +50,8 @@ def get_args_template():
                         action="store",
                         help="prefix for results files; default: %(default)s",
                         default="riboSeed", type=str)
-    parser.add_argument("-m", "--method_for_map", dest='method', action="store",
+    parser.add_argument("-m", "--method_for_map", dest='method',
+                        action="store",
                         help="availible mappers: smalt; default: %(default)s",
                         default='smalt', type=str)
     parser.add_argument("-c", "--cores", dest='cores', action="store",
@@ -75,7 +78,8 @@ def get_args_template():
                         action="store_true", default=False,
                         help="if --keep_unmapped fastqs are generated " +
                         "containing the unmapped reads; default: %(default)s")
-    parser.add_argument("--ref_as_contig", dest='ref_as_contig', action="store",
+    parser.add_argument("--ref_as_contig", dest='ref_as_contig',
+                        action="store",
                         default="", type=str,
                         help="if 'trusted', SPAdes will  use the seed " +
                         "sequences as a --trusted-contig; if 'untrusted', " +
@@ -86,9 +90,10 @@ def get_args_template():
                         default=False,
                         help="if --temps, intermediate files will be " +
                         "kept; default: %(default)s")
-    parser.add_argument("-i", "--iterations", dest='iterations', action="store",
+    parser.add_argument("-i", "--iterations", dest='iterations',
+                        action="store",
                         default=2, type=int,
-                        help="if iterations>1, multiple seedings will occur after\
+                        help="if  > 1, repeated iterationss will occur after\
                         assembly of seed regions ; default: %(default)s")
     parser.add_argument("-v", "--verbosity", dest='verbosity', action="store",
                         default=2, type=int,
@@ -102,14 +107,6 @@ def get_args_template():
                         default=False,
                         help="if --force, existing results dirs will be " +
                         "used; default: %(default)s")
-    parser.add_argument("--noclobber", dest='noclobber', action="store_true",
-                        default=False,
-                        help="if --noclobber, results dirs will be overwritten, " +
-                        "not deleted and written fresh; default: %(default)s")
-    parser.add_argument("--smalt_scoring", dest='smalt_scoring', action="store",
-                        default="match=1,subst=-4,gapopen=-4,gapext=-3",
-                        help="submit custom smalt scoring via the smalt -S " +
-                        "scorespec option; default: %(default)s")
     ##TODO  Make these check a config file
     parser.add_argument("--spades_exe", dest="spades_exe",
                         action="store", default="spades.py",
@@ -148,7 +145,7 @@ def set_up_logging(verbosity, outfile, name):
     logger.setLevel(logging.DEBUG)
     # create console handler and set level to given verbosity
     console_err = logging.StreamHandler(sys.stderr)
-    console_err.setLevel(level=(verbosity *10))
+    console_err.setLevel(level = (verbosity * 10))
     console_err_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     console_err.setFormatter(console_err_formatter)
     logger.addHandler(console_err)
@@ -166,6 +163,7 @@ def set_up_logging(verbosity, outfile, name):
     logger.debug("logging at level {0}".format(verbosity))
     return(logger)
 
+
 def set_up_root_logging(verbosity, outfile):
     """derived from set_up_logging; had problem where functions in modules
     could only log to root. If you cant lick 'em, join 'em.
@@ -174,7 +172,7 @@ def set_up_root_logging(verbosity, outfile):
     return a logger object
      """
     import logging
-    if (verbosity*10) not in range(10, 60, 10):
+    if (verbosity * 10) not in range(10, 60, 10):
         raise ValueError('Invalid log level: %s' % verbosity)
     try:
         logging.basicConfig(level=logging.DEBUG,
@@ -515,14 +513,14 @@ def keep_only_first_contig(ref, newname="contig1"):
 #     return("{0}contigs.fasta".format(os.path.join(output, "")), success)
 
 
-def run_quast(contigs, output, quast_exe, ref="", logger=None):
+def run_quast(contigs, output, quast_exe, ref="", threads=1, logger=None):
     """Reference is optional. This is, honestly, a pretty dumb feature
     requires sys, subprocess, (system install of quast)
     """
     if not ref == "":
         ref = str("-R %s" % ref)
-    quast_cmd = str("{3}  {0} {1} -o " +
-                    "{2}").format(contigs, ref, output, quast_exe)
+    quast_cmd = str("{3}  {0} {1} -t {3} -o " +
+                    "{2}").format(contigs, ref, output, quast_exe, threads)
     if logger:
         logger.info("Running quast as follows: {0}".format(quast_cmd))
     subprocess.run(quast_cmd,
@@ -531,7 +529,8 @@ def run_quast(contigs, output, quast_exe, ref="", logger=None):
                    stderr=subprocess.PIPE)
 
 
-def combine_contigs(contigs_dir, pattern = "*", contigs_name="riboSeedContigs_aggregated",
+def combine_contigs(contigs_dir, pattern = "*",
+                    contigs_name="riboSeedContigs_aggregated",
                     ext=".fasta", verbose=False, logger=None):
     """changed over to biopython
     combine all *ext files in dir, return path to concatenated file
@@ -550,7 +549,8 @@ def combine_contigs(contigs_dir, pattern = "*", contigs_name="riboSeedContigs_ag
                         "{0}:{1}".format(pattern, " ".join(fastas))))
     if len(fastas) == 0:
         if logger:
-            logger.error("No contig files found to combine in {0}!".format(contigs_dir))
+            logger.error("No matching files to combine found" +
+                         " in {0}!".format(contigs_dir))
         sys.exit(1)
     with open(output, 'w') as w_file:
         for filen in fastas:
@@ -568,9 +568,6 @@ def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
     This runs make blast db with the given parameters
     requires logging, os, subprocess, shutil
     """
-#    logger = logging.getLogger(__name__)
-    #logging.getLogger(name=None)
-#    logger.debug("TESTING I 2 3!")
     if makeblastdb_exe == '':
         makeblastdb_exe = shutil.which("makeblastdb")
     makedbcmd = str("{0} -in {1} -input_type {2} -dbtype {3} " +
@@ -671,17 +668,20 @@ def cleanup_output_to_csv(infile,
     # if logger:
     #     logger=logging.getLogger(name=None)
     print("cleaning up the csv output")
-    colnames = ["query_id", "subject_id", "identity_perc", "alignment_length", "mismatches",
-                "gap_opens", "q_start", "q_end", "s_start", "s_end", "evalue", "bit_score"]
-    csv_results = pd.read_csv(open(infile), comment="#", sep="\t", names=colnames)
-    #This regex will probably break things rather badly before too long...
+    colnames = ["query_id", "subject_id", "identity_perc", "alignment_length",
+                "mismatches", "gap_opens", "q_start", "q_end", "s_start",
+                "s_end", "evalue", "bit_score"]
+    csv_results = pd.read_csv(open(infile), comment="#", sep="\t",
+                              names=colnames)
+    #This default regex will probably break things eventually...
     # it looks for capital letter and numbers, dot, number, ie SHH11555JJ8.99
     csv_results["accession"] = csv_results.query_id.str.extract(accession_pattern)
     # write out results with new headers or with new headers and merged metadat from accessions.tab
     genes = open(genelist, "r")
     genedf = pd.read_csv(genes, sep=",")
     output_path_csv = str(os.path.splitext(infile)[0] + ".csv")
-    results_annotated = pd.merge(csv_results, genedf, how="left",  on="accession")
+    results_annotated = pd.merge(csv_results, genedf, how="left",
+                                 on="accession")
     results_annotated.to_csv(open(output_path_csv, "w"))
     print("wrote final csv to %s" % output_path_csv)
 #%%
@@ -689,7 +689,8 @@ def cleanup_output_to_csv(infile,
 
 def md5(fname, string=False):
     """straight from quantumsoup
-    http://stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file
+    http://stackoverflow.com/questions/3431825/
+        generating-an-md5-checksum-of-a-file
     updated 20160916 for strings; if true, fname can be a string
     """
     if string:
@@ -713,14 +714,22 @@ def check_single_scaffold(input_genome_path):
     return(counter)
 
 
-def get_genbank_record(input_genome_path):
-    """reads the FIRST record only from a genbank file; will probably only work for first scaffold
+def get_genbank_record(input_genome_path, check=False):
+    """reads the FIRST record only from a genbank file;
+        will probably only work for first scaffold
     """
     print("Reading genbank file...")
     with open(input_genome_path) as input_genome_handle:
         genome_seq_record = next(SeqIO.parse(input_genome_handle, "genbank"))
-    # if genome_sequence[0: 100] == str("N" * 100):
-    #     print("Careful: the first 100 nucleotides are N's; did you download the full .gb file?")
+    # to avoid issues from working multiple times with open file handles, this
+    # just reads it in fresh
+    if check:
+        with open(input_genome_path) as input_genome_handle:
+            genome_seq = next(SeqIO.parse(input_genome_handle, "genbank")).seq
+            if genome_seq[0: 100] == str("N" * 100):
+                print("Careful: the first 100 nucleotides are N's; " +
+                      "did you download the a truncated .gb file?")
+                sys.exit(1)
     return(genome_seq_record)
 
 

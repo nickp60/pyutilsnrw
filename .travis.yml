@@ -21,3 +21,11 @@ script:
 #   - nosetests --with-coverage # Add me to run nose with coverage support.
 after_success:
   coveralls
+
+deploy:
+  provider: pypi
+  user: "NickWaters"
+  password: "ihatecoriander4life"
+  server: https://testpypi.python.org/pypi
+  on:
+    tags: true

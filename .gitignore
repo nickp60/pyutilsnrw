@@ -8,4 +8,4 @@ dist/
 __pycache__/
 *.so
 *~
-
+.travis.yml
