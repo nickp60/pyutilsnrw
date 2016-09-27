@@ -12,6 +12,8 @@ from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
+from os import path
+import sys
 
 here = path.abspath(path.dirname(__file__))
 
@@ -19,13 +21,28 @@ here = path.abspath(path.dirname(__file__))
 with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
+# from pyani
+with path.join('riboseed', '__init__.py') as fh:
+    for line in fh:
+        m = re.search(r"^__version__ = '(?P<version>[^']+)'$", line)
+        if m:
+            init_version = m.group('version')
+            break
+
+if sys.version_info <= (3, 0):
+    sys.stderr.write("ERROR: riboseed requires Python 3.5 " +
+                     "or above...exiting.\n")
+    sys.exit(1)
+
+
+
 setup(
     name='pyutilsnrw',
 
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='0.0.3',
+    version=init_version,
 
     description='Python utils, by Nick',
     long_description=long_description,
