@@ -12,8 +12,8 @@ from setuptools import setup, find_packages
 # To use a consistent encoding
 from codecs import open
 from os import path
-from os import path
 import sys
+import re
 
 here = path.abspath(path.dirname(__file__))
 
@@ -22,8 +22,9 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
     long_description = f.read()
 
 # from pyani
-with path.join('riboseed', '__init__.py') as fh:
+with open(path.join(here, 'pyutilsnrw', '__init__.py')) as fh:
     for line in fh:
+        print(line)
         m = re.search(r"^__version__ = '(?P<version>[^']+)'$", line)
         if m:
             init_version = m.group('version')
