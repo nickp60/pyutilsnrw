@@ -11,7 +11,7 @@ Minor version changes:
 - found bug in combine_contigs that ignored dir if didnt end in
   path sep
 """
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 import time
 import sys
 import shutil
@@ -41,27 +41,6 @@ def get_args_template():
     parser.add_argument("-F", "--fastq1", dest='fastq1', action="store",
                         help="forward fastq reads, can be compressed",
                         type=str, default="")
-    parser.add_argument("-R", "--fastq2", dest='fastq2', action="store",
-                        help="reverse fastq reads, can be compressed",
-                        type=str, default="")
-    parser.add_argument("-S", "--fastq_single", dest='fastqS', action="store",
-                        help="single fastq reads", type=str, default="")
-    parser.add_argument("-n", "--experiment_name", dest='exp_name',
-                        action="store",
-                        help="prefix for results files; default: %(default)s",
-                        default="riboSeed", type=str)
-    parser.add_argument("-m", "--method_for_map", dest='method',
-                        action="store",
-                        help="availible mappers: smalt; default: %(default)s",
-                        default='smalt', type=str)
-    parser.add_argument("-c", "--cores", dest='cores', action="store",
-                        default=1, type=int,
-                        help="cores for multiprocessing workers" +
-                        "; default: %(default)s")
-    parser.add_argument("-r", "--reference_genome", dest='reference_genome',
-                        action="store", default='', type=str,
-                        help="fasta reference genome, used for estimating " +
-                        "insert sizes, QUAST, and SPAdes")
     parser.add_argument("-o", "--output", dest='output', action="store",
                         help="output directory; " +
                         "default: %(default)s", default=os.getcwd(), type=str)
@@ -69,75 +48,30 @@ def get_args_template():
                         action="store_true", default=False,
                         help="if --paired_inference, mapped read's " +
                         "pairs are included; default: %(default)s")
-    parser.add_argument("--subtract", dest='subtract', action="store_true",
-                        default=False, help="if --subtract, reads aligned " +
-                        "to each reference will not be aligned to future " +
-                        "iterations.  Probably you shouldnt do this" +
-                        "unless you really happen to want to")
-    parser.add_argument("--keep_unmapped", dest='keep_unmapped',
-                        action="store_true", default=False,
-                        help="if --keep_unmapped fastqs are generated " +
-                        "containing the unmapped reads; default: %(default)s")
-    parser.add_argument("--ref_as_contig", dest='ref_as_contig',
-                        action="store",
-                        default="", type=str,
-                        help="if 'trusted', SPAdes will  use the seed " +
-                        "sequences as a --trusted-contig; if 'untrusted', " +
-                        "SPAdes will treat as --untrusted-contig. if '', " +
-                        "seeds will not be used during assembly. " +
-                        "See SPAdes docs; default: %(default)s")
-    parser.add_argument("--temps", dest='temps', action="store_true",
-                        default=False,
-                        help="if --temps, intermediate files will be " +
-                        "kept; default: %(default)s")
     parser.add_argument("-i", "--iterations", dest='iterations',
                         action="store",
                         default=2, type=int,
                         help="if  > 1, repeated iterationss will occur after\
                         assembly of seed regions ; default: %(default)s")
-    parser.add_argument("-v", "--verbosity", dest='verbosity', action="store",
-                        default=2, type=int,
-                        help="1 = debug(), 2 = info(), 3 = warning(), " +
-                        "4 = error() and 5 = critical(); default: %(default)s")
-    parser.add_argument("--DEBUG", dest='DEBUG', action="store_true",
-                        default=False,
-                        help="if --DEBUG, test data will be " +
-                        "used; default: %(default)s")
-    parser.add_argument("--force", dest='force', action="store_true",
-                        default=False,
-                        help="if --force, existing results dirs will be " +
-                        "used; default: %(default)s")
     ##TODO  Make these check a config file
-    parser.add_argument("--spades_exe", dest="spades_exe",
-                        action="store", default="spades.py",
-                        help="Path to spades executable; default: %(default)s")
     parser.add_argument("--samtools_exe", dest="samtools_exe",
                         action="store", default="samtools",
                         help="Path to bwa executable; default: %(default)s")
-    parser.add_argument("--smalt_exe", dest="smalt_exe",
-                        action="store", default="smalt",
-                        help="Path to smalt executable; default: %(default)s")
-    parser.add_argument("--quast_exe", dest="quast_exe",
-                        action="store", default="quast.py",
-                        help="Path to quast executable; default: %(default)s")
     args = parser.parse_args()
     return(args)
 
-#def set_up_logging_given_numeric_verbosity(verbosity, outfile):
+
 def set_up_logging(verbosity, outfile, name):
     """
     Set up logging a la pyani, with
     a little help from:
-    https://aykutakin.wordpress.com/2013/08/06/logging-to-console-and-file-in-python/
+    https://aykutakin.wordpress.com/2013/08/06/
+        logging-to-console-and-file-in-python/
     requires logging, os, sys, time
     logs debug level to file, and [verbosity] level to stderr
     return a logger object
     """
-    import logging
-    # levels = ["debug", "info", "warning", "error", "critical"]
-    logger = logging.getLogger(str(name + ": %s" %
-                               time.asctime()))
-    if (verbosity*10) not in range(10, 60, 10):
+    if (verbosity * 10) not in range(10, 60, 10):
         raise ValueError('Invalid log level: %s' % verbosity)
     # setting root level; otherwisse, only logs warining and up
     # setting root level; otherwisse, only logs warining and up
@@ -145,7 +79,7 @@ def set_up_logging(verbosity, outfile, name):
     logger.setLevel(logging.DEBUG)
     # create console handler and set level to given verbosity
     console_err = logging.StreamHandler(sys.stderr)
-    console_err.setLevel(level = (verbosity * 10))
+    console_err.setLevel(level=(verbosity * 10))
     console_err_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
     console_err.setFormatter(console_err_formatter)
     logger.addHandler(console_err)
@@ -164,39 +98,39 @@ def set_up_logging(verbosity, outfile, name):
     return(logger)
 
 
-def set_up_root_logging(verbosity, outfile):
-    """derived from set_up_logging; had problem where functions in modules
-    could only log to root. If you cant lick 'em, join 'em.
-    requires logging, os, sys, time
-    logs debug level to file, and [verbosity] level to stderr
-    return a logger object
-     """
-    import logging
-    if (verbosity * 10) not in range(10, 60, 10):
-        raise ValueError('Invalid log level: %s' % verbosity)
-    try:
-        logging.basicConfig(level=logging.DEBUG,
-                            format="%(asctime)s - %(levelname)s - %(message)s",
-                            datefmt='%m-%d %H:%M:%S',
-                            filename=outfile,
-                            filemode='w')
-    except:
-        logger.error("Could not open {0} for logging".format(outfile))
-        sys.exit(1)
-    # define a Handler which writes INFO messages or higher to the sys.stderr
-    console = logging.StreamHandler(sys.stderr)
-    console.setLevel(level = (verbosity *10))
-    # set a format which is simpler for console use
-    formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-    # tell the handler to use this format
-    console.setFormatter(formatter)
-    # add the handler to the root logger
-    logging.getLogger('').addHandler(console)
-    # Now, we can log to the root logger, or any other logger. First the root...
-    logging.info("Initializing logger")
-    logging.debug("logging at level {0}".format(verbosity))
-    logger = logging.getLogger()
-    return(logger)
+# def set_up_root_logging(verbosity, outfile):
+#     """derived from set_up_logging; had problem where functions in modules
+#     could only log to root. If you cant lick 'em, join 'em.
+#     requires logging, os, sys, time
+#     logs debug level to file, and [verbosity] level to stderr
+#     return a logger object
+#      """
+#     import logging
+#     if (verbosity * 10) not in range(10, 60, 10):
+#         raise ValueError('Invalid log level: %s' % verbosity)
+#     try:
+#         logging.basicConfig(level=logging.DEBUG,
+#                             format="%(asctime)s - %(levelname)s - %(message)s",
+#                             datefmt='%m-%d %H:%M:%S',
+#                             filename=outfile,
+#                             filemode='w')
+#     except:
+#         logger.error("Could not open {0} for logging".format(outfile))
+#         sys.exit(1)
+#     # define a Handler which writes INFO messages or higher to the sys.stderr
+#     console = logging.StreamHandler(sys.stderr)
+#     console.setLevel(level = (verbosity *10))
+#     # set a format which is simpler for console use
+#     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+#     # tell the handler to use this format
+#     console.setFormatter(formatter)
+#     # add the handler to the root logger
+#     logging.getLogger('').addHandler(console)
+#     # Now, we can log to the root logger, or any other logger. First the root..
+#     logging.info("Initializing logger")
+#     logging.debug("logging at level {0}".format(verbosity))
+#     logger = logging.getLogger()
+#     return(logger)
 
 
 def make_outdir(path, logger=None):
@@ -223,18 +157,27 @@ def make_output_prefix(output_dir, name, logger=None):
         logger.debug(" output_prefix: %s" % os.path.join(output_dir, name))
     return(os.path.join(output_dir, name))
 
+def is_non_zero_file(fpath):
+    """http://stackoverflow.com/questions/2507808/python-how-to-check-file-empty-or-not
+    """
+    return os.path.isfile(fpath) and os.path.getsize(fpath) > 0
+
 
 #def copy_ref_to_temp(current_file, dest_dir, overwrite=False):
 def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
     """Copy reference fasta file to dest_dir to avoid making messy
     indexing files everywhere (generated during mapping).
     There is an option to rename resulting file. Probably could all be done
-    with shutil.copyfile, but I cant figure a way to handle the errors as well..
+    with shutil.copyfile, but I cant figure a way to handle the errors as well.
     This uses a system call to "rm x -f"; is this safe? I have to have the
     -f flag because otherwise it prompts, which disrumpt the flow.
     require shutil, logger, subprocess, sys, os, subprocess
     returns new path
     """
+    if not os.path.exists(current_file):
+        if logger:
+            logger.error("{0} is missing".format(current_file))
+            sys.exit(1)
     if type(name) is str and name != "":
         new_file_name = str(name)
     else:
@@ -405,15 +348,22 @@ def clean_temp_dir(temp_dir, logger=None):
             sys.exit(1)
 
 
-def output_from_subprocess_exists(output):
+def output_from_subprocess_exists(output, check_file=False,
+                                  check_empty=False):
     """just what it says: given an output path or dir,
     return True if it exists
     requires os
+    edited a la
     """
-    if os.path.exists(output):
-        return(True)
+    # test if file isnt empty
+    if check_file and check_empty:
+        return(os.path.isfile(output) and os.path.getsize(output) > 0)
+    # test if path is file exists and isnt a dir
+    elif check_file:
+        return(os.path.isfile(output))
+    # test dir or file exists
     else:
-        return(False)
+        return(os.path.exists(output))
 
 
 def keep_only_first_contig(ref, newname="contig1"):
@@ -447,72 +397,6 @@ def keep_only_first_contig(ref, newname="contig1"):
     os.rename(temp, ref)
 
 
-# def run_spades(output, ref, ref_as_contig, pe1_1='', pe1_2='', pe1_s='',
-#                as_paired=True, keep_best=True, prelim=False,
-#                k="21,33,55,77,99", seqname=''):
-#     """wrapper for common spades setting for long illumina reads
-#         ref_as_contig should be either blank, 'trusted', or 'untrusted'
-#         prelim flag is True, only assembly is run, and without coverage correction
-#         #TODO
-#         the seqname variable is used only for renaming the resulting contigs
-#         during iterative assembly.  It would be nice to inheirit from "ref",
-#         but that is changed with each iteration. This should probably be addressed
-#         before next major version change
-#     """
-#     if seqname == '':
-#         seqname = ref
-#     kmers = k  # .split[","]
-#     success = False
-#     #  prepare reference, if being used
-#     if not ref_as_contig == "":
-#         alt_contig = str("--%s-contigs %s" % (ref_as_contig, ref))
-#     else:
-#         alt_contig = ''
-#     # prepare read types, etc
-#     if as_paired and pe1_s != "":  # for libraries with both
-#         singles = str("--pe1-s %s " % pe1_s)
-#         pairs = str("--pe1-1 %s --pe1-2 %s " % (pe1_1, pe1_2))
-#     elif as_paired and pe1_s == "":  # for libraries with just PE
-#         singles = ""
-#         pairs = str("--pe1-1 %s --pe1-2 %s " % (pe1_1, pe1_2))
-#     elif pe1_s == "":  # for libraries treating paired ends as two single-end libs
-#         singles = ''
-#         pairs = str("--pe1-s %s --pe2-s %s " % (pe1_1, pe1_2))
-#     else:  # for 3 single end libraries
-#         singles = str("--pe1-s %s " % pe1_s)
-#         pairs = str("--pe2-s %s --pe3-s %s " % (pe1_1, pe1_2))
-#     reads = str(pairs+singles)
-# #    spades_cmds=[]
-#     if prelim:
-#         prelim_cmd =\
-#             str(args.spades_exe + " --only-assembler --cov-cutoff off --sc --careful -k {0}" +
-#                 " {1} {2} -o {3}").format(kmers, reads, alt_contig, output)
-#         logger.info("Running the following command:\n{0}".format(prelim_cmd))
-#         subprocess.run(prelim_cmd,
-#                        shell=sys.platform != "win32",
-#                        stdout=subprocess.PIPE,
-#                        stderr=subprocess.PIPE, check=True)
-#         success = output_from_subprocess_exists(os.path.join(output,
-#                                                              "contigs.fasta"))
-#         if prelim and keep_best and success:
-#             logger.info("reserving first contig")
-#             keep_only_first_contig(str(os.path.join(output, "contigs.fasta")),
-#                                    newname=
-#                                        os.path.splitext(os.path.basename(seqname))[0])
-#     else:
-#         spades_cmd = str(args.spades_exe + " --careful -k {0} {1} {2} -o " +
-#                          "{3}").format(kmers, reads, alt_contig, output)
-#         logger.info("Running the following command:\n{0}".format(spades_cmd))
-#         subprocess.run(spades_cmd,
-#                        shell=sys.platform != "win32",
-#                        stdout=subprocess.PIPE,
-#                        stderr=subprocess.PIPE)
-#         # not check=True; dont know spades return codes
-#         success = output_from_subprocess_exists(os.path.join(output,
-#                                                              "contigs.fasta"))
-#     return("{0}contigs.fasta".format(os.path.join(output, "")), success)
-
-
 def run_quast(contigs, output, quast_exe, ref="", threads=1, logger=None):
     """Reference is optional. This is, honestly, a pretty dumb feature
     requires sys, subprocess, (system install of quast)
@@ -529,7 +413,7 @@ def run_quast(contigs, output, quast_exe, ref="", threads=1, logger=None):
                    stderr=subprocess.PIPE)
 
 
-def combine_contigs(contigs_dir, pattern = "*",
+def combine_contigs(contigs_dir, pattern="*",
                     contigs_name="riboSeedContigs_aggregated",
                     ext=".fasta", verbose=False, logger=None):
     """changed over to biopython
@@ -595,8 +479,6 @@ def run_blastp(input_file, database_name, outfmt, blastp_exe='', logger=None):
     """
     requires logging subprocess, os, shutil
     """
-    #logger = logging.getLogger(name=None)
-    # logger = logging.getLogger(__name__)
     output_file = os.path.join(os.path.split(input_file)[0],
                                str(os.path.splitext(
                                    os.path.basename(input_file))[0] +
@@ -704,7 +586,7 @@ def md5(fname, string=False):
 
 
 def check_single_scaffold(input_genome_path):
-    """Test for single scaffold.
+    """Test for single scaffold. from genbank
     """
     print("testing for multiple scaffolds...")
     counter = -1  # if all goes well, returns 0, else returns 1 or more or -1
@@ -714,29 +596,51 @@ def check_single_scaffold(input_genome_path):
     return(counter)
 
 
-def get_genbank_record(input_genome_path, check=False):
-    """reads the FIRST record only from a genbank file;
-        will probably only work for first scaffold
+def get_genbank_record(input_genome_path, check=True,
+                       verbose=True, logger=None, first_only=True):
+    """reads all records from a genbank file;
+    returns records as a list if first_only is false,
+    to preserve legacy behaviour
     """
-    print("Reading genbank file...")
+    if verbose and logger:
+        log_status = logger.info
+    elif verbose:
+        log_status = sys.stderr.write
+    else:
+        pass
+    log_status("Reading genbank file...")
+    rec_list = []
     with open(input_genome_path) as input_genome_handle:
-        genome_seq_record = next(SeqIO.parse(input_genome_handle, "genbank"))
+        for record in SeqIO.parse(input_genome_handle, "genbank"):
+            rec_list.append(record)
+    if len(rec_list) == 0:
+        log_status("Error getting records from genbank file!")
+        sys.exit(1)
     # to avoid issues from working multiple times with open file handles, this
     # just reads it in fresh
     if check:
         with open(input_genome_path) as input_genome_handle:
             genome_seq = next(SeqIO.parse(input_genome_handle, "genbank")).seq
             if genome_seq[0: 100] == str("N" * 100):
-                print("Careful: the first 100 nucleotides are N's; " +
-                      "did you download the a truncated .gb file?")
+                log_status("Careful: the first 100 nucleotides are N's; " +
+                           "did you download the a truncated .gb file?")
                 sys.exit(1)
-    return(genome_seq_record)
+    if first_only:
+        return(rec_list[0])
+    else:
+        return(rec_list)
 
 
-def get_genbank_seq(input_genome_path):
-    """get the sequence from the FIRST record only in a genbank file
+def get_genbank_seq(input_genome_path, first_only=False):
+    """Get all sequences from genbank, return a list, unless first only
+    get the sequence from the FIRST record only in a genbank file
     """
     print("fetching nucleotide sequence from genbank file...")
+    seq_list = []
     with open(input_genome_path) as input_genome_handle:
-        genome_seq_record = next(SeqIO.parse(input_genome_handle, "genbank"))
-    return(genome_seq_record.seq)
+        for record in SeqIO.parse(input_genome_handle, "genbank"):
+            seq_list.append(record.seq)
+    if first_only:
+        return(seq_list[0])
+    else:
+        return(seq_list)
