@@ -216,7 +216,7 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
     return(new_ref)
 
 
-def check_installed_tools(list_of_tools, logger=None):
+def check_installed_tools(list_of_tools, hard=True, logger=None):
     """given a list of executables (or things that should be in PATH,
     raise error if executable for a tool is not found
     requires shutil, logger, sys
@@ -225,11 +225,15 @@ def check_installed_tools(list_of_tools, logger=None):
         if not shutil.which(i):
             if logger:
                 logger.error("Must have {0} installed in PATH!".format(i))
-            sys.exit(1)
+            # this allows soft failure if needed
+            if hard:
+                sys.exit(1)
+            else:
+                return(False)
         else:
             if logger:
                 logger.debug("{0} executable found".format(i))
-
+            return(True)
 
 def get_ave_read_len_from_fastq(fastq1, N=50, logger=None):
     """from LP; return average read length in fastq1 file from first N reads
@@ -615,7 +619,8 @@ def get_genbank_record(input_genome_path, check=True,
         for record in SeqIO.parse(input_genome_handle, "genbank"):
             rec_list.append(record)
     if len(rec_list) == 0:
-        log_status("Error getting records from genbank file!")
+        if logger:
+            logger.error("Error getting records from genbank file!")
         sys.exit(1)
     # to avoid issues from working multiple times with open file handles, this
     # just reads it in fresh
