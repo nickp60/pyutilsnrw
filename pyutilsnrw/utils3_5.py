@@ -602,13 +602,14 @@ def get_genbank_record(input_genome_path, check=True,
     returns records as a list if first_only is false,
     to preserve legacy behaviour
     """
-    if verbose and logger:
-        log_status = logger.info
-    elif verbose:
-        log_status = sys.stderr.write
-    else:
-        pass
-    log_status("Reading genbank file...")
+    #if verbose and logger:
+    #    log_status = logger.info
+    #elif verbose:
+    #    log_status = sys.stderr.write
+    #else:
+    #    pass
+    if logger:
+        logger.info("Reading genbank file...")
     rec_list = []
     with open(input_genome_path) as input_genome_handle:
         for record in SeqIO.parse(input_genome_handle, "genbank"):
@@ -622,9 +623,10 @@ def get_genbank_record(input_genome_path, check=True,
         with open(input_genome_path) as input_genome_handle:
             genome_seq = next(SeqIO.parse(input_genome_handle, "genbank")).seq
             if genome_seq[0: 100] == str("N" * 100):
-                log_status("Careful: the first 100 nucleotides are N's; " +
-                           "did you download the a truncated .gb file?")
-                sys.exit(1)
+                if logger:
+                    logger.error("Careful: the first 100 nucleotides are " +\
+                                 "N's; did you download a truncated .gb file?")
+                    sys.exit(1)
     if first_only:
         return(rec_list[0])
     else:
