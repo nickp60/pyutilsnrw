@@ -36,7 +36,7 @@ sys.dont_write_bytecode = True
 from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
     extract_mapped_and_mappedmates, keep_only_first_contig, md5,\
-    combine_contigs, clean_temp_dir
+    combine_contigs, clean_temp_dir, get_genbank_record
 
 
 def get_args():
@@ -55,7 +55,7 @@ def get_args():
                  " with less than python 3.5")
 class utils3_5TestCase(unittest.TestCase):
     def setUp(self):
-        pass
+        self.genbank_filename = "references/n_equitans.gbk"
 
     def test_make_testing_dir(self):
         if not os.path.exists(testdirname):
@@ -225,12 +225,22 @@ class utils3_5TestCase(unittest.TestCase):
         for i in [duplicated_multifasta, for_first_contig, combined_contigs]:
             os.remove(i)
 
+    def test_get_genbank_record(self):
+        """Reads records from a GenBank file"""
+        records = get_genbank_record(self.genbank_filename)
+        assert(type(records) == list)
+
     def tearDown(self):
         pass
 
 
 if __name__ == '__main__':
-    args = get_args()
+    # Commented out because processing command-line arguments in this way
+    # breaks expected behaviour of unittests in Python, see:
+    # https://docs.python.org/3/library/unittest.html
+    # e.g. `tests.py -v` should enable verbose unit test output, but catching
+    # the cmd-line like this prevents the framework seeing the arguments.
+    #args = get_args()
     curdir = os.getcwd()
     testdirname = os.path.join(os.path.dirname(__file__),
                                "output_utils3_5_tests")
