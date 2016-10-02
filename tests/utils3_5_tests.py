@@ -36,7 +36,7 @@ sys.dont_write_bytecode = True
 from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
     extract_mapped_and_mappedmates, keep_only_first_contig, md5,\
-    combine_contigs, clean_temp_dir
+    combine_contigs, clean_temp_dir, get_genbank_record
 
 
 def get_args():
@@ -54,26 +54,13 @@ def get_args():
                  "Subprocess.call among otherthings wont run if you try this" +
                  " with less than python 3.5")
 class utils3_5TestCase(unittest.TestCase):
-    # def init(self):
-    #     pass
-    # keep_temps = False
-    # self.samtools = "test"
-    # # samtools_exe = "samtoolz"
-    # # def __init__(self, testname, keep_temps):
-    # #     super(utils3_5TestCase, self).__init__(testname)
-    # #     self.keep_temps = keep_temps
-    # #     pass
-    # print(self.samtools)
     def setUp(self):
-        pass
+        self.genbank_filename = "references/n_equitans.gbk"
 
     def test_make_testing_dir(self):
         if not os.path.exists(testdirname):
             os.makedirs(testdirname)
         self.assertTrue(os.path.exists(testdirname))
-
-    # def test_this_fails(self):
-    #      self.assertEqual("pinecone", 42)
 
     def test_clean_temp_dir(self):
         """ I tried to do something like
@@ -215,12 +202,6 @@ class utils3_5TestCase(unittest.TestCase):
         path_to_dup = os.path.join(testdirname, "duplicated_multifasta.fasta")
         keep_only_first_contig(path_to_dup, newname="contig1")
         self.assertEqual(md5(path_to_dup), md5(test_singlefasta))
-        # copy
-        # copy_file(current_file=os.path.join(os.path.dirname(test_multifasta),
-        #                                     "duplicated_multifasta.fasta"),
-        #           dest_dir=os.path.dirname(test_multifasta),
-        #           name=os.path.basename(test_multifasta), overwrite=True,
-        #           logger=None)
         os.remove(path_to_dup)
 
     def test_combine_contigs(self):
@@ -244,129 +225,23 @@ class utils3_5TestCase(unittest.TestCase):
         for i in [duplicated_multifasta, for_first_contig, combined_contigs]:
             os.remove(i)
 
+    def test_get_genbank_record(self):
+        """Reads records from a GenBank file"""
+        records = get_genbank_record(self.genbank_filename)
+        assert(type(records) == list)
+
     def tearDown(self):
         pass
-##  Functions to write tests for
-
-
-# def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
-#                         title="blastdb", out="blastdb",
-#                         makeblastdb_exe=''):
-#     """
-#     This runs make blast db with the given parameters
-#     requires logging, os, subprocess, shutil
-#     """
-#     logger = logging.getLogger(__name__)
-#     #logging.getLogger(name=None)
-#     logger.debug("TESTING I 2 3!")
-#     if makeblastdb_exe == '':
-#         makeblastdb_exe = shutil.which("makeblastdb")
-#     makedbcmd = str("{0} -in {1} -input_type {2} -dbtype {3} " +
-#                     "-title {4} -out {5}").format(makeblastdb_exe,
-#                         input_file, input_type, dbtype, title, out)
-#     logger.info("Making blast db: {0}".format(makedbcmd))
-#     try:
-#         subprocess.run(makedbcmd, shell=sys.platform != "win32",
-#                        stdout=subprocess.PIPE,
-#                        stderr=subprocess.PIPE, check=True)
-#         logging.debug("BLAST database '{0}' created here: {1}".format(
-#             title, out))
-#         return(0)
-#     except:
-#         logging.error("Something bad happened when trying to make " +
-#                       "a blast database")
-#         sys.exit(1)
-
-
-# def run_blastp(input_file, database_name, outfmt, blastp_exe=''):
-#     """
-#     requires logging subprocess, os, shutil
-#     """
-#     #logger = logging.getLogger(name=None)
-#     logger = logging.getLogger(__name__)
-#     output_file = os.path.join(os.path.split(input_file)[0],
-#                                str(os.path.splitext(
-#                                    os.path.basename(input_file))[0] +
-#                                    "_blast_hits.tab"))
-#     if blastp_exe == '':
-#         blastp_exe = shutil.which("blastp")
-#     blastpcmd = str("{0} -db {1} -query {2} -out {3} -outfmt " +
-#                     "{4}").format(blastp_exe, database_name, input_file,
-#                                   output_file, outfmt)
-#     logger.info("Running blastp: {0}".format(blastpcmd))
-#     try:
-#         subprocess.run(blastpcmd, shell=sys.platform != "win32",
-#                        stdout=subprocess.PIPE,
-#                        stderr=subprocess.PIPE, check=True)
-#         logger.debug("Results from BLASTing {0} are here: {1}".format(
-#             input_file, output_file))
-#         return(0)
-#     except:
-#         logger.error("Something bad happened when running blast")
-#         sys.exit(1)
-
-
-# #def merge_outfiles(filelist, outfile_name):
-# def merge_blast_tab_outfiles(filelist, outfile_name):
-#     """
-#     #TODO needs a test for headers
-#     for combining tab formated blast output format 6
-#     returns 0 if successful
-#     requires logging
-#     """
-#     # only grab .tab files, ie, the blast output
-#     logger = logging.getLogger()
-#     filelist = [i for i in filelist if i.split(".")[-1:] == ['tab']]
-#     if len(filelist) == 1:
-#         logger.warning("only one file found! no merging needed")
-#         return(0)
-#     elif len(filelist) == 0:
-#         logger.error("filelist empt; cannot perform merge!")
-#         return(1)
-#     else:
-#         logger.info("merging all the blast results to %s" % outfile_name)
-#         nfiles = len(filelist)
-#         fout = open(outfile_name, "a")
-#         # first file:
-#         for line in open(filelist[0]):
-#             fout.write(line)
-#         #  now the rest:
-#         for num in range(1, nfiles):
-#             f = open(filelist[num])
-#             for line in f:
-#                 fout.write(line)
-#             f.close()  # not really needed
-#         fout.close()
-#         return(0)
-
-
-# def cleanup_output_to_csv(infile,
-#                           accession_pattern='(?P<accession>[A-Z _\d]*\.\d*)'):
-#     """
-#     given .tab from merge_blast_tab_outfiles, assign pretty column names,
-#     """
-#     logger = logging.getLogger(name=None)
-#     print("cleaning up the csv output")
-#     colnames = ["query_id", "subject_id", "identity_perc", "alignment_length", "mismatches",
-#                 "gap_opens", "q_start", "q_end", "s_start", "s_end", "evalue", "bit_score"]
-#     csv_results = pd.read_csv(open(infile), comment="#", sep="\t", names=colnames)
-#     #This regex will probably break things rather badly before too long...
-#     # it looks for capital letter and numbers, dot, number, ie SHH11555JJ8.99
-#     csv_results["accession"] = csv_results.query_id.str.extract(accession_pattern)
-#     # write out results with new headers or with new headers and merged metadat from accessions.tab
-#     genes = open(genelist, "r")
-#     genedf = pd.read_csv(genes, sep=",")
-#     output_path_csv = str(os.path.splitext(infile)[0]+".csv")
-#     results_annotated = pd.merge(csv_results, genedf, how="left",  on="accession")
-#     results_annotated.to_csv(open(output_path_csv, "w"))
-#     print("wrote final csv to %s" % output_path_csv)
-# #%%
 
 
 if __name__ == '__main__':
-    args = get_args()
+    # Commented out because processing command-line arguments in this way
+    # breaks expected behaviour of unittests in Python, see:
+    # https://docs.python.org/3/library/unittest.html
+    # e.g. `tests.py -v` should enable verbose unit test output, but catching
+    # the cmd-line like this prevents the framework seeing the arguments.
+    #args = get_args()
     curdir = os.getcwd()
-    # samtools_exe = args.samtools_exe
     testdirname = os.path.join(os.path.dirname(__file__),
                                "output_utils3_5_tests")
     test_fastq_file = os.path.join(os.path.dirname(__file__),
@@ -390,13 +265,5 @@ if __name__ == '__main__':
     test_md5s_prefix = os.path.join(os.path.dirname(__file__),
                                     str("references" + os.path.sep +
                                         "md5"))
-    # utils3_5TestCase.keep_temps = args.keep_temps
     samtools_exe = "samtools"
     unittest.main()
-    # suite = unittest.TestSuite()
-    # keep_temps=args.keep_temps
-    # suite = unittest.defaultTestLoader.loadTestsFromTestCase(utils3_5TestCase)
-    # suite.addTest(utils3_5TestCase("tearDown", keep_temps))
-    # unittest.utils3_5TestCase().run(suite)
-    # if not args.keep_temps:
-    #     os.rmdir(testdirname)

@@ -157,6 +157,7 @@ def make_output_prefix(output_dir, name, logger=None):
         logger.debug(" output_prefix: %s" % os.path.join(output_dir, name))
     return(os.path.join(output_dir, name))
 
+
 def is_non_zero_file(fpath):
     """http://stackoverflow.com/questions/2507808/python-how-to-check-file-empty-or-not
     """
@@ -610,42 +611,16 @@ def check_single_scaffold(input_genome_path):
     return(counter)
 
 
-def get_genbank_record(input_genome_path, check=True,
-                       verbose=True, logger=None, first_only=True):
-    """reads all records from a genbank file;
-    returns records as a list if first_only is false,
-    to preserve legacy behaviour
-    """
-    #if verbose and logger:
-    #    log_status = logger.info
-    #elif verbose:
-    #    log_status = sys.stderr.write
-    #else:
-    #    pass
-    if logger:
-        logger.info("Reading genbank file...")
-    rec_list = []
-    with open(input_genome_path) as input_genome_handle:
-        for record in SeqIO.parse(input_genome_handle, "genbank"):
-            rec_list.append(record)
-    if len(rec_list) == 0:
-        if logger:
-            logger.error("Error getting records from genbank file!")
-        sys.exit(1)
-    # to avoid issues from working multiple times with open file handles, this
-    # just reads it in fresh
-    if check:
-        with open(input_genome_path) as input_genome_handle:
-            genome_seq = next(SeqIO.parse(input_genome_handle, "genbank")).seq
-            if genome_seq[0: 100] == str("N" * 100):
-                if logger:
-                    logger.error("Careful: the first 100 nucleotides are " +\
-                                 "N's; did you download a truncated .gb file?")
-                    sys.exit(1)
-    if first_only:
-        return(rec_list[0])
-    else:
-        return(rec_list)
+# def get_genbank_record(input_genome_path, logger=None, first_only=True):
+#     """Returns a list of records in a GenBank file"""
+#     if logger:
+#         logger.info("Reading genbank file...")
+#     with open(input_genome_path) as input_genome_handle:
+#         records = list(SeqIO.parse(input_genome_handle, "genbank"))
+#     if first_only:
+#         return(records[0])
+#     else:
+#         return(records)
 
 
 def get_genbank_seq(input_genome_path, first_only=False):
