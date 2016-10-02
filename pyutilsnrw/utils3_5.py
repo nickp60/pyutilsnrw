@@ -611,16 +611,16 @@ def check_single_scaffold(input_genome_path):
     return(counter)
 
 
-# def get_genbank_record(input_genome_path, logger=None, first_only=True):
-#     """Returns a list of records in a GenBank file"""
-#     if logger:
-#         logger.info("Reading genbank file...")
-#     with open(input_genome_path) as input_genome_handle:
-#         records = list(SeqIO.parse(input_genome_handle, "genbank"))
-#     if first_only:
-#         return(records[0])
-#     else:
-#         return(records)
+def get_genbank_record(input_genome_path, logger=None, first_only=True):
+    """Returns a list of records in a GenBank file"""
+    if logger:
+        logger.info("Reading genbank file...")
+    with open(input_genome_path) as input_genome_handle:
+        records = list(SeqIO.parse(input_genome_handle, "genbank"))
+    if first_only:
+        return([records[0]])
+    else:
+        return(records)
 
 
 def get_genbank_seq(input_genome_path, first_only=False):
