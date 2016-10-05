@@ -36,7 +36,8 @@ sys.dont_write_bytecode = True
 from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
     extract_mapped_and_mappedmates, keep_only_first_contig, md5,\
-    combine_contigs, clean_temp_dir, get_genbank_record, get_fasta_lengths
+    combine_contigs, clean_temp_dir, get_genbank_record, get_fasta_lengths,\
+    file_len
 
 
 # def get_args():
@@ -88,6 +89,9 @@ class utils3_5TestCase(unittest.TestCase):
                                              str("references" + os.path.sep +
                                                  "md5"))
         self.samtools_exe = "samtools"
+
+    def test_file_len(self):
+        self.assertEqual(file_len(self.test_combined), 32)
 
     def test_make_testing_dir(self):
         if not os.path.exists(self.testdirname):
@@ -252,7 +256,7 @@ class utils3_5TestCase(unittest.TestCase):
                                            pattern="*test_combine",
                                            contigs_name="combined_contigs.fa",
                                            ext=".fasta",
-                                           verbose=True)
+                                           verbose=False)
         self.assertEqual(md5(self.test_combined), md5(combined_contigs))
         for i in [duplicated_multifasta, for_first_contig, combined_contigs]:
             os.remove(i)

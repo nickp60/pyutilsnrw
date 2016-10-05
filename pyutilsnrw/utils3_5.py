@@ -61,6 +61,16 @@ def get_args_template():
     return(args)
 
 
+def file_len(fname):
+    """http://stackoverflow.com/questions/845058/
+    how-to-get-line-count-cheaply-in-python
+    """
+    with open(fname) as f:
+        for i, l in enumerate(f):
+            pass
+    return(i + 1)
+
+
 def set_up_logging(verbosity, outfile, name):
     """
     Set up logging a la pyani, with
@@ -244,17 +254,19 @@ def get_ave_read_len_from_fastq(fastq1, N=50, logger=None):
         open_fun = gzip.open
     else:
         open_fun = open
-    data = SeqIO.parse(open_fun(fastq1, "rt"), "fastq")
-    for read in data:
-        count += 1
-        tot += len(read)
-        if count >= N:
-            break
+    with open_fun(fastq1, "rt") as file_handle:
+        data = SeqIO.parse(file_handle, "fastq")
+        for read in data:
+            count += 1
+            tot += len(read)
+            if count >= N:
+                break
     if logger:
         logger.info(str("From the first {0} reads in {1}, " +
                         "mean length is {2}").format(N,
                                                      os.path.basename(fastq1),
                                                      float(tot / count)))
+    file_handle.close()
     return(float(tot / count))
 
 
@@ -262,9 +274,9 @@ def get_fasta_lengths(fasta):
     """ given a fasta file, return list of sequence lengths as list
     """
     len_list = []
-    data = SeqIO.parse(open(fasta, "rt"), "fasta")
-    for read in data:
-        len_list.append(len(read))
+    with  open(fasta, "rt") as data:
+        for read in SeqIO.parse(data, "fasta"):
+            len_list.append(len(read))
     return(len_list)
 
 
