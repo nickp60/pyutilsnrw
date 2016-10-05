@@ -65,6 +65,10 @@ def file_len(fname):
     """http://stackoverflow.com/questions/845058/
     how-to-get-line-count-cheaply-in-python
     """
+    if os.path.splitext(fname)[-1] in ['.gz', '.gzip']:
+        open_fun = gzip.open
+    else:
+        open_fun = open
     with open(fname) as f:
         for i, l in enumerate(f):
             pass
