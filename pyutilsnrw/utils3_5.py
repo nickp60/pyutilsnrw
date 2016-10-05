@@ -247,8 +247,9 @@ def check_installed_tools(list_of_tools, hard=True, logger=None):
                 return(False)
         else:
             if logger:
-                logger.debug("{0} executable found".format(i))
+                logger.debug("{0} executable found".format(shutil.which(i)))
             return(True)
+
 
 def get_ave_read_len_from_fastq(fastq1, N=50, logger=None):
     """from LP; return average read length in fastq1 file from first N reads
@@ -434,8 +435,8 @@ def run_quast(contigs, output, quast_exe, ref="", threads=1, logger=None):
     """
     if not ref == "":
         ref = str("-R %s" % ref)
-    quast_cmd = str("{3}  {0} {1} -t {3} -o " +
-                    "{2}").format(contigs, ref, output, quast_exe, threads)
+    quast_cmd = str("{0}  {1} {2} -t {3} -o " +
+                    "{4}").format(quast_exe, contigs, ref, threads, output)
     if logger:
         logger.info("Running quast as follows: {0}".format(quast_cmd))
     subprocess.run(quast_cmd,
