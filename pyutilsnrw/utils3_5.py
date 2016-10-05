@@ -69,7 +69,7 @@ def file_len(fname):
         open_fun = gzip.open
     else:
         open_fun = open
-    with open(fname) as f:
+    with open_fun(fname) as f:
         for i, l in enumerate(f):
             pass
     return(i + 1)
