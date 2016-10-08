@@ -69,6 +69,9 @@ class utils3_5TestCase(unittest.TestCase):
         self.test_fastq_file = os.path.join(os.path.dirname(__file__),
                                             str("references" + os.path.sep +
                                                 'reads_reference.fastq'))
+        self.test_empty_file = os.path.join(os.path.dirname(__file__),
+                                            str("references" + os.path.sep +
+                                                'empty.fasta'))
         self.test_bam_file = os.path.join(os.path.dirname(__file__),
                                           str("references" + os.path.sep +
                                               "mapping_reference.bam"))
@@ -116,10 +119,13 @@ class utils3_5TestCase(unittest.TestCase):
         """is pwd on all mac/linux systems?
         #TODO replace with better passing test
         """
-        check_installed_tools(["pwd"])
+        check_installed_tools("pwd")
         # test fails properly
+        nonex = "thisisnotapathtoanactualexecutable"
         with self.assertRaises(SystemExit):
-            check_installed_tools(["thisisnotapathtoanactualexecutable"])
+            check_installed_tools(nonex)
+        self.assertFalse(check_installed_tools(nonex,
+                                               hard=False))
 
     def test_md5_strings(self):
         """ minimal md5 examples
@@ -265,10 +271,10 @@ class utils3_5TestCase(unittest.TestCase):
         """Reads records from a GenBank file.
         """
         records = get_genbank_record(self.genbank_filename)
-        assert(type(records) == list)
+        assert type(records) is list
         multirecords = get_genbank_record(self.multigenbank_filename,
                                           first_only=False)
-        assert(type(multirecords) == list)
+        assert type(multirecords) is list
 
     def test_get_fasta_lengths(self):
         self.assertEqual(get_fasta_lengths(self.test_singlefasta), [169])
@@ -278,37 +284,147 @@ class utils3_5TestCase(unittest.TestCase):
     def tearDown(self):
         pass
 
-
 if __name__ == '__main__':
-    # Commented out because processing command-line arguments in this way
-    # breaks expected behaviour of unittests in Python, see:
-    # https://docs.python.org/3/library/unittest.html
-    # e.g. `tests.py -v` should enable verbose unit test output, but catching
-    # the cmd-line like this prevents the framework seeing the arguments.
-    #args = get_args()
-    # curdir = os.getcwd()
-    # testdirname = os.path.join(os.path.dirname(__file__),
-    #                            "output_utils3_5_tests")
-    # test_fastq_file = os.path.join(os.path.dirname(__file__),
-    #                                str("references" + os.path.sep +
-    #                                    'reads_reference.fastq'))
-    # test_bam_file = os.path.join(os.path.dirname(__file__),
-    #                              str("references" + os.path.sep +
-    #                                  "mapping_reference.bam"))
-    # test_sam_mapped_file = os.path.join(os.path.dirname(__file__),
-    #                                     str("references" + os.path.sep +
-    #                                         "mapping_reference_mapped.sam"))
-    # test_multifasta = os.path.join(os.path.dirname(__file__),
-    #                                str("references" + os.path.sep +
-    #                                    "test_multiseqs_reference.fasta"))
-    # test_singlefasta = os.path.join(os.path.dirname(__file__),
-    #                                 str("references" + os.path.sep +
-    #                                     "test_only_first_reference.fasta"))
-    # test_combined = os.path.join(os.path.dirname(__file__),
-    #                              str("references" + os.path.sep +
-    #                                  "combined_contigs_reference.fa"))
-    # test_md5s_prefix = os.path.join(os.path.dirname(__file__),
-    #                                 str("references" + os.path.sep +
-    #                                     "md5"))
-    # samtools_exe = "samtools"
     unittest.main()
+
+###
+### below are the functions to still write tests for
+###
+# def run_quast(contigs, output, quast_exe, ref="", threads=1, logger=None):
+#     """Reference is optional. This is, honestly, a pretty dumb feature
+#     requires sys, subprocess, (system install of quast)
+#     """
+# def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
+#                         title="blastdb", out="blastdb",
+#                         makeblastdb_exe='', logger=None):
+#     """
+#     This runs make blast db with the given parameters
+#     requires logging, os, subprocess, shutil
+#     """
+#     if makeblastdb_exe == '':
+#         makeblastdb_exe = shutil.which("makeblastdb")
+#     makedbcmd = str("{0} -in {1} -input_type {2} -dbtype {3} " +
+#                     "-title {4} -out {5}").format(makeblastdb_exe,
+#                                                   input_file,
+#                                                   input_type,
+#                                                   dbtype, title, out)
+#     if logger:
+#         logger.info("Making blast db: {0}".format(makedbcmd))
+#     try:
+#         subprocess.run(makedbcmd, shell=sys.platform != "win32",
+#                        stdout=subprocess.PIPE,
+#                        stderr=subprocess.PIPE, check=True)
+#         logging.debug("BLAST database '{0}' created here: {1}".format(
+#             title, out))
+#         return(0)
+#     except:
+#         if logger:
+#             logging.error("Something bad happened when trying to make " +
+#                           "a blast database")
+#         sys.exit(1)
+
+
+# def run_blastp(input_file, database_name, outfmt, blastp_exe='', logger=None):
+#     """
+#     requires logging subprocess, os, shutil
+#     """
+#     output_file = os.path.join(os.path.split(input_file)[0],
+#                                str(os.path.splitext(
+#                                    os.path.basename(input_file))[0] +
+#                                    "_blast_hits.tab"))
+#     if blastp_exe == '':
+#         blastp_exe = shutil.which("blastp")
+#     blastpcmd = str("{0} -db {1} -query {2} -out {3} -outfmt " +
+#                     "{4}").format(blastp_exe, database_name, input_file,
+#                                   output_file, outfmt)
+#     if logger:
+#         logger.info("Running blastp: {0}".format(blastpcmd))
+#     try:
+#         subprocess.run(blastpcmd, shell=sys.platform != "win32",
+#                        stdout=subprocess.PIPE,
+#                        stderr=subprocess.PIPE, check=True)
+#         if logger:
+#             logger.debug("Results from BLASTing {0} are here: {1}".format(
+#                 input_file, output_file))
+#         return(0)
+#     except:
+#         if logger:
+#             logger.error("Something bad happened when running blast")
+#         sys.exit(1)
+
+
+# #def merge_outfiles(filelist, outfile_name):
+# def merge_blast_tab_outfiles(filelist, outfile_name, logger=None):
+#     """
+#     #TODO needs a test for headers
+#     for combining tab formated blast output format 6
+#     returns 0 if successful
+#     requires logging
+#     """
+#     # only grab .tab files, ie, the blast output
+#     # logger=logging.getLogger()
+#     filelist = [i for i in filelist if i.split(".")[-1:] == ['tab']]
+#     if len(filelist) == 1:
+#         if logger:
+#             logger.warning("only one file found! no merging needed")
+#         return(0)
+#     elif len(filelist) == 0:
+#         if logger:
+#             logger.error("filelist empt; cannot perform merge!")
+#         return(1)
+#     else:
+#         if logger:
+#             logger.info("merging all the blast results to %s" % outfile_name)
+#         nfiles = len(filelist)
+#         fout = open(outfile_name, "a")
+#         # first file:
+#         for line in open(filelist[0]):
+#             fout.write(line)
+#         #  now the rest:
+#         for num in range(1, nfiles):
+#             f = open(filelist[num])
+#             for line in f:
+#                 fout.write(line)
+#             f.close()  # not really needed
+#         fout.close()
+#         return(0)
+
+
+# def cleanup_output_to_csv(infile,
+#                           accession_pattern='(?P<accession>[A-Z _\d]*\.\d*)',
+#                           logger=None):
+#     """
+#     given .tab from merge_blast_tab_outfiles, assign pretty column names,
+#     """
+#     # if logger:
+#     #     logger=logging.getLogger(name=None)
+#     print("cleaning up the csv output")
+#     colnames = ["query_id", "subject_id", "identity_perc", "alignment_length",
+#                 "mismatches", "gap_opens", "q_start", "q_end", "s_start",
+#                 "s_end", "evalue", "bit_score"]
+#     csv_results = pd.read_csv(open(infile), comment="#", sep="\t",
+#                               names=colnames)
+#     #This default regex will probably break things eventually...
+#     # it looks for capital letter and numbers, dot, number, ie SHH11555JJ8.99
+#     csv_results["accession"] = csv_results.query_id.str.extract(accession_pattern)
+#     # write out results with new headers or with new headers and merged metadat from accessions.tab
+#     genes = open(genelist, "r")
+#     genedf = pd.read_csv(genes, sep=",")
+#     output_path_csv = str(os.path.splitext(infile)[0] + ".csv")
+#     results_annotated = pd.merge(csv_results, genedf, how="left",
+#                                  on="accession")
+#     results_annotated.to_csv(open(output_path_csv, "w"))
+#     print("wrote final csv to %s" % output_path_csv)
+# #%%
+
+
+
+# def check_single_scaffold(input_genome_path):
+#     """Test for single scaffold. from genbank
+#     """
+
+
+# def get_genbank_seq(input_genome_path, first_only=False):
+#     """Get all sequences from genbank, return a list, unless first only
+#     get the sequence from the FIRST record only in a genbank file
+#     """

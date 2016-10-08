@@ -231,24 +231,24 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
     return(new_ref)
 
 
-def check_installed_tools(list_of_tools, hard=True, logger=None):
+def check_installed_tools(executable, hard=True, logger=None):
     """given a list of executables (or things that should be in PATH,
     raise error if executable for a tool is not found
     requires shutil, logger, sys
     """
-    for i in list_of_tools:
-        if not shutil.which(i):
-            if logger:
-                logger.error("Must have {0} installed in PATH!".format(i))
-            # this allows soft failure if needed
-            if hard:
-                sys.exit(1)
-            else:
-                return(False)
+    i = executable
+    if not shutil.which(i):
+        if logger:
+            logger.error("Must have {0} installed in PATH!".format(i))
+        # this allows soft failure if needed
+        if hard:
+            sys.exit(1)
         else:
-            if logger:
-                logger.debug("{0} executable found".format(shutil.which(i)))
-            return(True)
+            return(False)
+    else:
+        if logger:
+            logger.debug("{0} executable found".format(shutil.which(i)))
+        return(True)
 
 
 def get_ave_read_len_from_fastq(fastq1, N=50, logger=None):
