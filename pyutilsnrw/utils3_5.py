@@ -222,7 +222,7 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
             sys.exit(1)
     else:
         if logger:
-            logger.info(str("copying fasta from {0} to " +
+            logger.debug(str("copying fasta from {0} to " +
                             "{1}").format(current_file, new_ref))
     cmd = str("cp %s %s" % (current_file, new_ref))
     subprocess.run(cmd, shell=sys.platform != "win32",
