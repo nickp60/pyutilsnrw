@@ -87,15 +87,15 @@ def set_up_logging(verbosity, outfile, name):
     """
     if (verbosity * 10) not in range(10, 60, 10):
         raise ValueError('Invalid log level: %s' % verbosity)
-    # setting root level; otherwisse, only logs warining and up
-    # setting root level; otherwisse, only logs warining and up
     # logging.basicConfig(level=logging.DEBUG)
     logger.setLevel(logging.DEBUG)
     # create console handler and set level to given verbosity
     console_err = logging.StreamHandler(sys.stderr)
     console_err.setLevel(level=(verbosity * 10))
-    console_err_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    console_err.setFormatter(console_err_formatter)
+    console_err_format = logging.Formatter(str("%(asctime)s - " +
+                                               "%(levelname)s - %(message)s"),
+                                           "%Y-%m-%d %H:%M:%S")
+    console_err.setFormatter(console_err_format)
     logger.addHandler(console_err)
     # create debug file handler and set level to debug
     try:
