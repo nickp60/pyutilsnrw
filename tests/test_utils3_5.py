@@ -37,7 +37,7 @@ from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
     extract_mapped_and_mappedmates, keep_only_first_contig, md5,\
     combine_contigs, clean_temp_dir, get_genbank_record, get_fasta_lengths,\
-    file_len
+    file_len, multisplit
 
 
 # def get_args():
@@ -280,6 +280,18 @@ class utils3_5TestCase(unittest.TestCase):
         self.assertEqual(get_fasta_lengths(self.test_singlefasta), [169])
         self.assertEqual(get_fasta_lengths(self.test_multifasta),
                          [169, 161, 159, 159, 151, 133, 128])
+
+    def test_multisplit(self):
+        test_string = "look_this+is+a locus_that_is+multi-delimited"
+        list_of_things = multisplit(["-", "_", "+", " "], test_string)
+        test_other_string = "look_this+is+a\faillocus_that_is+multi-delimited"
+        list_of_other_things = multisplit(["-", "_", "+", " "],
+                                          test_other_string)
+        self.assertEqual(list_of_things, ["look", "this", "is", "a", "locus",
+                                          "that", "is", "multi", "delimited"])
+        self.assertNotEqual(list_of_other_things, ["look", "this", "is", "a",
+                                                   "locus", "that", "is",
+                                                   "multi", "delimited"])
 
     def tearDown(self):
         pass

@@ -642,7 +642,6 @@ def get_genbank_record(input_genome_path, logger=None, first_only=True):
 
 def get_genbank_seq(input_genome_path, first_only=False):
     """Get all sequences from genbank, return a list, unless first only
-    get the sequence from the FIRST record only in a genbank file
     """
     print("fetching nucleotide sequence from genbank file...")
     seq_list = []
@@ -653,3 +652,13 @@ def get_genbank_seq(input_genome_path, first_only=False):
         return(seq_list[0])
     else:
         return(seq_list)
+
+
+def multisplit(delimiters, string, maxsplit=0):
+    """from SO. takes a list of delimiters and a string, and
+    returns a list of split string
+    """
+    import re
+    assert type(delimiters) is list
+    regexPattern = '|'.join(map(re.escape, delimiters))
+    return(re.split(regexPattern, string, maxsplit))
