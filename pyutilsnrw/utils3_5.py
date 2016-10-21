@@ -12,19 +12,20 @@ Minor version changes:
   path sep
 """
 __version__ = "0.0.4"
-import time
 import sys
 import shutil
 import logging
 import subprocess
 import os
-from Bio import SeqIO
 import hashlib
 import re
 import glob
 import gzip
 import errno
 import argparse
+
+from Bio import SeqIO
+
 
 logger = logging.getLogger('root')
 
@@ -53,12 +54,12 @@ def get_args_template():
                         default=2, type=int,
                         help="if  > 1, repeated iterationss will occur after\
                         assembly of seed regions ; default: %(default)s")
-    ##TODO  Make these check a config file
+    # TODO  Make these check a config file
     parser.add_argument("--samtools_exe", dest="samtools_exe",
                         action="store", default="samtools",
                         help="Path to bwa executable; default: %(default)s")
     args = parser.parse_args()
-    return(args)
+    return args
 
 
 def file_len(fname):
@@ -71,8 +72,9 @@ def file_len(fname):
         open_fun = open
     with open_fun(fname) as f:
         for i, l in enumerate(f):
+            index = i
             pass
-    return(i + 1)
+    return index + 1
 
 
 def set_up_logging(verbosity, outfile, name):
@@ -109,42 +111,7 @@ def set_up_logging(verbosity, outfile, name):
         sys.exit(1)
     logger.info("Initializing logger")
     logger.debug("logging at level {0}".format(verbosity))
-    return(logger)
-
-
-# def set_up_root_logging(verbosity, outfile):
-#     """derived from set_up_logging; had problem where functions in modules
-#     could only log to root. If you cant lick 'em, join 'em.
-#     requires logging, os, sys, time
-#     logs debug level to file, and [verbosity] level to stderr
-#     return a logger object
-#      """
-#     import logging
-#     if (verbosity * 10) not in range(10, 60, 10):
-#         raise ValueError('Invalid log level: %s' % verbosity)
-#     try:
-#         logging.basicConfig(level=logging.DEBUG,
-#                             format="%(asctime)s - %(levelname)s - %(message)s",
-#                             datefmt='%m-%d %H:%M:%S',
-#                             filename=outfile,
-#                             filemode='w')
-#     except:
-#         logger.error("Could not open {0} for logging".format(outfile))
-#         sys.exit(1)
-#     # define a Handler which writes INFO messages or higher to the sys.stderr
-#     console = logging.StreamHandler(sys.stderr)
-#     console.setLevel(level = (verbosity *10))
-#     # set a format which is simpler for console use
-#     formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
-#     # tell the handler to use this format
-#     console.setFormatter(formatter)
-#     # add the handler to the root logger
-#     logging.getLogger('').addHandler(console)
-#     # Now, we can log to the root logger, or any other logger. First the root..
-#     logging.info("Initializing logger")
-#     logging.debug("logging at level {0}".format(verbosity))
-#     logger = logging.getLogger()
-#     return(logger)
+    return logger
 
 
 def make_outdir(path, logger=None):
@@ -162,14 +129,13 @@ def make_outdir(path, logger=None):
             sys.exit(1)
 
 
-#def make_output_prefix(map_output_dir, exp_name):
 def make_output_prefix(output_dir, name, logger=None):
     """ makes output prefix from output directory and name.
     requires os, logger
     """
     if logger:
         logger.debug(" output_prefix: %s" % os.path.join(output_dir, name))
-    return(os.path.join(output_dir, name))
+    return os.path.join(output_dir, name)
 
 
 def is_non_zero_file(fpath):
@@ -178,7 +144,6 @@ def is_non_zero_file(fpath):
     return os.path.isfile(fpath) and os.path.getsize(fpath) > 0
 
 
-#def copy_ref_to_temp(current_file, dest_dir, overwrite=False):
 def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
     """Copy reference fasta file to dest_dir to avoid making messy
     indexing files everywhere (generated during mapping).
@@ -193,7 +158,7 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
         if logger:
             logger.error("{0} is missing".format(current_file))
             sys.exit(1)
-    if type(name) is str and name != "":
+    if isinstance(name, str) and name != "":
         new_file_name = str(name)
     else:
         new_file_name = os.path.basename(current_file)
@@ -203,9 +168,8 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
             try:
                 rm_cmd = "rm -f {0}".format(new_ref)
                 if logger:
-                    logger.debug(str("removing {0} to be overwritten " +
-                                     "with {1}.").format(
-                        new_ref, current_file))
+                    logger.debug(str("removing {0} to be overwritten with " +
+                                     "{1}.").format(new_ref, current_file))
                     logger.debug(rm_cmd)
                 subprocess.run(rm_cmd, shell=sys.platform != "win32",
                                stdout=subprocess.PIPE,
@@ -218,17 +182,17 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
         else:
             if logger:
                 logger.error(str("cannot overwrite {0} " +
-                             "to {1}").format(new_ref, current_file))
+                                 "to {1}").format(new_ref, current_file))
             sys.exit(1)
     else:
         if logger:
             logger.debug(str("copying fasta from {0} to " +
-                            "{1}").format(current_file, new_ref))
+                             "{1}").format(current_file, new_ref))
     cmd = str("cp %s %s" % (current_file, new_ref))
     subprocess.run(cmd, shell=sys.platform != "win32",
                    stdout=subprocess.PIPE,
                    stderr=subprocess.PIPE, check=True)
-    return(new_ref)
+    return new_ref
 
 
 def check_installed_tools(executable, hard=True, logger=None):
@@ -244,11 +208,11 @@ def check_installed_tools(executable, hard=True, logger=None):
         if hard:
             sys.exit(1)
         else:
-            return(False)
+            return False
     else:
         if logger:
             logger.debug("{0} executable found".format(shutil.which(i)))
-        return(True)
+        return True
 
 
 def get_ave_read_len_from_fastq(fastq1, N=50, logger=None):
@@ -272,20 +236,19 @@ def get_ave_read_len_from_fastq(fastq1, N=50, logger=None):
                                                      os.path.basename(fastq1),
                                                      float(tot / count)))
     file_handle.close()
-    return(float(tot / count))
+    return float(tot / count)
 
 
 def get_fasta_lengths(fasta):
     """ given a fasta file, return list of sequence lengths as list
     """
     len_list = []
-    with  open(fasta, "rt") as data:
+    with open(fasta, "rt") as data:
         for read in SeqIO.parse(data, "fasta"):
             len_list.append(len(read))
-    return(len_list)
+    return len_list
 
 
-#def get_number_mapped(bam):
 def get_number_mapped(bam, samtools_exe, logger=None):
     """use samtools flagstats to retrieve total mapped reads as a diagnostic
     returns a string to be printed, the 4th line of flagstat
@@ -299,12 +262,12 @@ def get_number_mapped(bam, samtools_exe, logger=None):
                                check=True)
     try:
         printout = flagstats.stdout.decode("utf-8").split("\n")[4]
-        #TODO test for none mapped
+    # TODO test for none mapped
     except IndexError:
         if logger:
             logger.error("Error reading {0}".format(bam))
         sys.exit(1)
-    return(printout)
+    return printout
 
 
 def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates,
@@ -360,7 +323,6 @@ def extract_mapped_and_mappedmates(map_results_prefix, fetch_mates,
                        stderr=subprocess.PIPE, check=True)
 
 
-#def clean_temp_dir(map_output_dir):
 def clean_temp_dir(temp_dir, logger=None):
     """ from http://stackoverflow.com/questions/
             185936/delete-folder-contents-in-python
@@ -392,14 +354,14 @@ def output_from_subprocess_exists(output, check_file=False,
         return(os.path.isfile(output) and os.path.getsize(output) > 0)
     # test if path is file exists and isnt a dir
     elif check_file:
-        return(os.path.isfile(output))
+        return os.path.isfile(output)
     # test dir or file exists
     else:
-        return(os.path.exists(output))
+        return os.path.exists(output)
 
 
 def keep_only_first_contig(ref, newname="contig1"):
-    #TODO make a biopython version
+    # TODO make a biopython version
     """
     given a multi fasta from SPAdes, extract first entry,
     rename "NODE_1" with newname, overwrite file
@@ -474,7 +436,7 @@ def combine_contigs(contigs_dir, pattern="*",
                 seq_records = SeqIO.parse(o_file, 'fasta')
                 SeqIO.write(seq_records, w_file, 'fasta')
 
-    return(output)
+    return output
 
 
 def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
@@ -499,7 +461,7 @@ def setup_protein_blast(input_file, input_type="fasta", dbtype="prot",
                        stderr=subprocess.PIPE, check=True)
         logging.debug("BLAST database '{0}' created here: {1}".format(
             title, out))
-        return(0)
+        return 0
     except:
         if logger:
             logging.error("Something bad happened when trying to make " +
@@ -529,17 +491,16 @@ def run_blastp(input_file, database_name, outfmt, blastp_exe='', logger=None):
         if logger:
             logger.debug("Results from BLASTing {0} are here: {1}".format(
                 input_file, output_file))
-        return(0)
+        return 0
     except:
         if logger:
             logger.error("Something bad happened when running blast")
         sys.exit(1)
 
 
-#def merge_outfiles(filelist, outfile_name):
 def merge_blast_tab_outfiles(filelist, outfile_name, logger=None):
     """
-    #TODO needs a test for headers
+    # TODO needs a test for headers
     for combining tab formated blast output format 6
     returns 0 if successful
     requires logging
@@ -550,11 +511,11 @@ def merge_blast_tab_outfiles(filelist, outfile_name, logger=None):
     if len(filelist) == 1:
         if logger:
             logger.warning("only one file found! no merging needed")
-        return(0)
+        return 0
     elif len(filelist) == 0:
         if logger:
             logger.error("filelist empt; cannot perform merge!")
-        return(1)
+        return 1
     else:
         if logger:
             logger.info("merging all the blast results to %s" % outfile_name)
@@ -570,15 +531,16 @@ def merge_blast_tab_outfiles(filelist, outfile_name, logger=None):
                 fout.write(line)
             f.close()  # not really needed
         fout.close()
-        return(0)
+        return 0
 
 
-def cleanup_output_to_csv(infile,
+def cleanup_output_to_csv(infile, genelist_path,
                           accession_pattern='(?P<accession>[A-Z _\d]*\.\d*)',
                           logger=None):
     """
     given .tab from merge_blast_tab_outfiles, assign pretty column names,
     """
+    import pandas as pd
     # if logger:
     #     logger=logging.getLogger(name=None)
     print("cleaning up the csv output")
@@ -587,18 +549,17 @@ def cleanup_output_to_csv(infile,
                 "s_end", "evalue", "bit_score"]
     csv_results = pd.read_csv(open(infile), comment="#", sep="\t",
                               names=colnames)
-    #This default regex will probably break things eventually...
+    # This default regex will probably break things eventually...
     # it looks for capital letter and numbers, dot, number, ie SHH11555JJ8.99
     csv_results["accession"] = csv_results.query_id.str.extract(accession_pattern)
     # write out results with new headers or with new headers and merged metadat from accessions.tab
-    genes = open(genelist, "r")
+    genes = open(genelist_path, "r")
     genedf = pd.read_csv(genes, sep=",")
     output_path_csv = str(os.path.splitext(infile)[0] + ".csv")
     results_annotated = pd.merge(csv_results, genedf, how="left",
                                  on="accession")
     results_annotated.to_csv(open(output_path_csv, "w"))
     print("wrote final csv to %s" % output_path_csv)
-#%%
 
 
 def md5(fname, string=False):
@@ -608,13 +569,13 @@ def md5(fname, string=False):
     updated 20160916 for strings; if true, fname can be a string
     """
     if string:
-        return(hashlib.md5(fname.encode('utf-8')).hexdigest())
+        return hashlib.md5(fname.encode('utf-8')).hexdigest()
     else:
         hash_md5 = hashlib.md5()
         with open(fname, "rb") as f:
             for chunk in iter(lambda: f.read(4096), b""):
                 hash_md5.update(chunk)
-            return(hash_md5.hexdigest())
+            return hash_md5.hexdigest()
 
 
 def check_single_scaffold(input_genome_path):
@@ -625,7 +586,7 @@ def check_single_scaffold(input_genome_path):
     for line in open(input_genome_path, "r"):
         if re.search("ORIGIN", line) is not None:
             counter = counter + 1
-    return(counter)
+    return counter
 
 
 def get_genbank_record(input_genome_path, logger=None, first_only=True):
@@ -635,9 +596,9 @@ def get_genbank_record(input_genome_path, logger=None, first_only=True):
     with open(input_genome_path) as input_genome_handle:
         records = list(SeqIO.parse(input_genome_handle, "genbank"))
     if first_only:
-        return([records[0]])
+        return [records[0]]
     else:
-        return(records)
+        return records
 
 
 def get_genbank_seq(input_genome_path, first_only=False):
@@ -649,9 +610,9 @@ def get_genbank_seq(input_genome_path, first_only=False):
         for record in SeqIO.parse(input_genome_handle, "genbank"):
             seq_list.append(record.seq)
     if first_only:
-        return(seq_list[0])
+        return seq_list[0]
     else:
-        return(seq_list)
+        return seq_list
 
 
 def multisplit(delimiters, string, maxsplit=0):
@@ -659,6 +620,6 @@ def multisplit(delimiters, string, maxsplit=0):
     returns a list of split string
     """
     import re
-    assert type(delimiters) is list
+    assert isinstance(delimiters, list)
     regexPattern = '|'.join(map(re.escape, delimiters))
-    return(re.split(regexPattern, string, maxsplit))
+    return re.split(regexPattern, string, maxsplit)

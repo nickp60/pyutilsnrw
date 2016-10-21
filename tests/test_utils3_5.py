@@ -21,17 +21,9 @@ md5: 27944249bf064ba54576be83053e82b0
 
 """
 __version__ = "0.0.3"
-import time
 import sys
-import shutil
-import logging
-import subprocess
 import os
 import unittest
-import hashlib
-import glob
-import argparse
-sys.dont_write_bytecode = True
 
 from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
@@ -39,31 +31,23 @@ from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     combine_contigs, clean_temp_dir, get_genbank_record, get_fasta_lengths,\
     file_len, multisplit
 
-
-# def get_args():
-#     parser = argparse.ArgumentParser(
-#         description="test suite for pyutilsnrw repo")
-#     parser.add_argument("-k", "--keep_temps", dest='keep_temps',
-#                         action="store_true",
-#                         help="set if you want to inspect the output files",
-#                         default=False)
-#     args = parser.parse_args()
-#     return(args)
+sys.dont_write_bytecode = True
 
 
 @unittest.skipIf((sys.version_info[0] != 3) or (sys.version_info[1] < 5),
                  "Subprocess.call among otherthings wont run if you try this" +
                  " with less than python 3.5")
 class utils3_5TestCase(unittest.TestCase):
+    """ Test the utils3_5 collection of functions
+    """
     def setUp(self):
-        # self.genbank_filename = "references/n_equitans.gbk"
         self.genbank_filename = os.path.join(os.path.dirname(__file__),
                                              str("references" + os.path.sep +
                                                  'n_equitans.gbk'))
         self.multigenbank_filename = os.path.join(os.path.dirname(__file__),
-                                             str("references" + os.path.sep +
-                                                 'uams1_rs.gb'))
-        # curdir = os.getcwd()
+                                                  str("references" +
+                                                      os.path.sep +
+                                                      'uams1_rs.gb'))
         self.testdirname = os.path.join(os.path.dirname(__file__),
                                         "output_utils3_5_tests")
         self.test_fastq_file = os.path.join(os.path.dirname(__file__),
@@ -75,28 +59,36 @@ class utils3_5TestCase(unittest.TestCase):
         self.test_bam_file = os.path.join(os.path.dirname(__file__),
                                           str("references" + os.path.sep +
                                               "mapping_reference.bam"))
-        self.test_sam_mapped_file = os.path.join(os.path.dirname(__file__),
-                                                 str("references" +
-                                                     os.path.sep +
-                                                     "mapping_reference_mapped.sam"))
-        self.test_multifasta = os.path.join(os.path.dirname(__file__),
-                                            str("references" + os.path.sep +
-                                                "test_multiseqs_reference.fasta"))
-        self.test_singlefasta = os.path.join(os.path.dirname(__file__),
-                                             str("references" + os.path.sep +
-                                                 "test_only_first_reference.fasta"))
-        self.test_combined = os.path.join(os.path.dirname(__file__),
-                                          str("references" + os.path.sep +
-                                              "combined_contigs_reference.fa"))
-        self.test_md5s_prefix = os.path.join(os.path.dirname(__file__),
-                                             str("references" + os.path.sep +
-                                                 "md5"))
+        self.test_sam_mapped_file = os.path.join(
+            os.path.dirname(__file__),
+            str("references" +
+                os.path.sep +
+                "mapping_reference_mapped.sam"))
+        self.test_multifasta = os.path.join(
+            os.path.dirname(__file__),
+            str("references" + os.path.sep +
+                "test_multiseqs_reference.fasta"))
+        self.test_singlefasta = os.path.join(
+            os.path.dirname(__file__),
+            str("references" + os.path.sep +
+                "test_only_first_reference.fasta"))
+        self.test_combined = os.path.join(
+            os.path.dirname(__file__),
+            str("references" + os.path.sep +
+                "combined_contigs_reference.fa"))
+        self.test_md5s_prefix = os.path.join(
+            os.path.dirname(__file__),
+            str("references" + os.path.sep + "md5"))
         self.samtools_exe = "samtools"
 
     def test_file_len(self):
+        """ test against file of known length
+        """
         self.assertEqual(file_len(self.test_combined), 32)
 
     def test_make_testing_dir(self):
+        """ make a place for the temporary files
+        """
         if not os.path.exists(self.testdirname):
             os.makedirs(self.testdirname)
         self.assertTrue(os.path.exists(self.testdirname))
@@ -116,10 +108,9 @@ class utils3_5TestCase(unittest.TestCase):
                          "".join([self.testdirname, os.path.sep, "utils_3.5"]))
 
     def test_check_installed_tools(self):
-        """is pwd on all mac/linux systems?
-        #TODO replace with better passing test
+        """check against known install (python) and a non_executable
         """
-        check_installed_tools("pwd")
+        check_installed_tools("python")
         # test fails properly
         nonex = "thisisnotapathtoanactualexecutable"
         with self.assertRaises(SystemExit):
@@ -128,7 +119,7 @@ class utils3_5TestCase(unittest.TestCase):
                                                hard=False))
 
     def test_md5_strings(self):
-        """ minimal md5 examples
+        """ minimal md5 examples with strings
         """
         self.assertEqual(md5("thisstringisidenticalto", string=True),
                          md5("thisstringisidenticalto", string=True))
@@ -162,6 +153,8 @@ class utils3_5TestCase(unittest.TestCase):
                                               i[1])))
 
     def test_md5_files(self):
+        """ test file contests identiy
+        """
         md5_a = md5(str(self.test_md5s_prefix + "_a.txt"))
         md5_b = md5(str(self.test_md5s_prefix + "_b.txt"))
         md5_fail = md5(str(self.test_md5s_prefix + "_fail.txt"))
@@ -169,13 +162,17 @@ class utils3_5TestCase(unittest.TestCase):
         self.assertNotEqual(md5_a, md5_fail)
 
     def test_copy_file(self):
+        """ make sure copied files are the same
+        """
         if not os.path.exists(self.test_fastq_file):
-            raise("test file is gone!  where is test_reads.fastq ?")
+            raise FileNotFoundError("test file is gone!  " +
+                                    "where is test_reads.fastq ?")
         new_path = copy_file(current_file=self.test_fastq_file,
                              dest_dir=self.testdirname,
                              name="newname.fastq", overwrite=False)
         # test path to copied file is constructed properly
-        self.assertEqual(new_path, os.path.join(self.testdirname, "newname.fastq"))
+        self.assertEqual(new_path, os.path.join(self.testdirname,
+                                                "newname.fastq"))
         # test identity of files
         self.assertEqual(md5(new_path),
                          md5(os.path.join(self.testdirname, "newname.fastq")))
@@ -186,21 +183,23 @@ class utils3_5TestCase(unittest.TestCase):
                                  name="newname.fastq", overwrite=False)
         os.remove(new_path)
 
-    def test_get_ave_read_len_from_fastq(self):
-        """this probably could/should be refined to have a better test
+    def test_average_read_len(self):
+        """ tests get_ave_read_len_from_fastq
+        this probably could/should be refined to have a better test
         """
         mean_read_len = get_ave_read_len_from_fastq(self.test_fastq_file, N=5)
         self.assertEqual(217.8, mean_read_len)
 
     def test_get_number_mapped(self):
-        """
+        """ checks flagstat
         """
         result = get_number_mapped(self.test_bam_file, self.samtools_exe)
         reference = "151 + 0 mapped (0.56% : N/A)"
         self.assertEqual(result, reference)
 
-    def test_extract_mapped_and_mappedmates(self):
-        """ dont trust this if  make_output_prefix test fails
+    def test_extraction(self):
+        """ tests extract_mapped_and_mappedmates
+        dont trust this if  make_output_prefix test fails
         some help from PSS on SO:
         http://stackoverflow.com/questions/16874598/
             how-do-i-calculate-the-md5-checksum-of-a-file-in-python
@@ -209,9 +208,11 @@ class utils3_5TestCase(unittest.TestCase):
         test_bam_dup = copy_file(current_file=self.test_bam_file,
                                  dest_dir=self.testdirname,
                                  name="", overwrite=False)
+        self.assertTrue(os.path.exists(test_bam_dup))
         test_mapped_dup = copy_file(current_file=self.test_sam_mapped_file,
                                     dest_dir=self.testdirname,
                                     name="", overwrite=False)
+        self.assertTrue(os.path.exists(test_mapped_dup))
         ref_dir = os.path.join(self.testdirname)
         prefix = make_output_prefix(output_dir=ref_dir,
                                     name="mapping_reference")
@@ -241,12 +242,15 @@ class utils3_5TestCase(unittest.TestCase):
                   dest_dir=self.testdirname,
                   name='duplicated_multifasta.fasta', overwrite=False,
                   logger=None)
-        path_to_dup = os.path.join(self.testdirname, "duplicated_multifasta.fasta")
+        path_to_dup = os.path.join(self.testdirname,
+                                   "duplicated_multifasta.fasta")
         keep_only_first_contig(path_to_dup, newname="contig1")
         self.assertEqual(md5(path_to_dup), md5(self.test_singlefasta))
         os.remove(path_to_dup)
 
     def test_combine_contigs(self):
+        """ compine two files, compare lengths, check construction
+        """
         duplicated_multifasta = copy_file(current_file=self.test_multifasta,
                                           dest_dir=self.testdirname,
                                           name='multifasta_test_combine.fasta',
@@ -271,17 +275,21 @@ class utils3_5TestCase(unittest.TestCase):
         """Reads records from a GenBank file.
         """
         records = get_genbank_record(self.genbank_filename)
-        assert type(records) is list
+        assert isinstance(records, list)
         multirecords = get_genbank_record(self.multigenbank_filename,
                                           first_only=False)
-        assert type(multirecords) is list
+        assert isinstance(multirecords, list)
 
     def test_get_fasta_lengths(self):
+        """ get the lengths of the multifasta entries
+        """
         self.assertEqual(get_fasta_lengths(self.test_singlefasta), [169])
         self.assertEqual(get_fasta_lengths(self.test_multifasta),
                          [169, 161, 159, 159, 151, 133, 128])
 
     def test_multisplit(self):
+        """ split a string that has multiple delimiters
+        """
         test_string = "look_this+is+a locus_that_is+multi-delimited"
         list_of_things = multisplit(["-", "_", "+", " "], test_string)
         test_other_string = "look_this+is+a\faillocus_that_is+multi-delimited"
