@@ -103,7 +103,8 @@ def set_up_logging(verbosity, outfile, name):
     try:
         logfile_handler = logging.FileHandler(outfile, "w")
         logfile_handler.setLevel(logging.DEBUG)
-        logfile_handler_formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        logfile_handler_formatter = \
+            logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
         logfile_handler.setFormatter(logfile_handler_formatter)
         logger.addHandler(logfile_handler)
     except:
@@ -113,6 +114,36 @@ def set_up_logging(verbosity, outfile, name):
     logger.debug("logging at level {0}".format(verbosity))
     return logger
 
+
+def check_version_from_init(init_file, min_version="0.0.0"):
+    """the guts have been stolen from pyani; returns version
+    from an init file based on a
+    """
+    from distutils.version import StrictVersion
+    # from pyani
+    if os.path.isfile(init_file):
+        if not os.path.getsize(init_file) > 0:
+            raise ValueError("Init file {0} is empty!".format(
+                init_file))
+        this_version = None
+        with open(init_file) as fh:
+            for line in fh:
+                m = re.search(r"^__version__ = '(?P<version>[^']+)'$", line)
+                if m:
+                    this_version = m.group('version')
+        if this_version is None:
+            raise ValueError("""version does not get captured with
+            "re.search(r"^__version__ = '(?P<version>[^']+)'$)""")
+    else:
+        raise FileNotFoundError
+    print(this_version)
+    try:
+        if StrictVersion(this_version) < StrictVersion(min_version):
+            raise ValueError("the version in {0} must be greater than {1}".format(
+                init_file, min_version))
+    except Exception as e:
+        raise e
+    return(this_version)
 
 def make_outdir(path, logger=None):
     """makes a directory if it doesnt exist

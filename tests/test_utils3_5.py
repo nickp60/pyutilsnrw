@@ -29,7 +29,7 @@ from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
     extract_mapped_and_mappedmates, keep_only_first_contig, md5,\
     combine_contigs, clean_temp_dir, get_genbank_record, get_fasta_lengths,\
-    file_len, multisplit
+    file_len, multisplit, check_version_from_init
 
 sys.dont_write_bytecode = True
 
@@ -80,6 +80,20 @@ class utils3_5TestCase(unittest.TestCase):
             os.path.dirname(__file__),
             str("references" + os.path.sep + "md5"))
         self.samtools_exe = "samtools"
+
+    def test_check_init(self):
+        """this checks the version number in an init file
+        """
+        initf = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            "pyutilsnrw", "__init__.py")
+        print(initf)
+        self.assertTrue(isinstance(
+            check_version_from_init(init_file=initf, min_version="0.0.0"), str))
+        with self.assertRaises(FileNotFoundError):
+            check_version_from_init(init_file="notheinitfile", min_version="0.0.0")
+        with self.assertRaises(ValueError):
+            check_version_from_init(init_file=initf, min_version="10.0.0")
 
     def test_file_len(self):
         """ test against file of known length
