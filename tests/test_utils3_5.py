@@ -29,7 +29,7 @@ from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
     extract_mapped_and_mappedmates, keep_only_first_contig, md5,\
     combine_contigs, clean_temp_dir, get_genbank_record, get_fasta_lengths,\
-    file_len, multisplit, check_version_from_init
+    file_len, multisplit, check_version_from_init, check_version_from_cmd
 
 sys.dont_write_bytecode = True
 
@@ -94,6 +94,23 @@ class utils3_5TestCase(unittest.TestCase):
             check_version_from_init(init_file="notheinitfile", min_version="0.0.0")
         with self.assertRaises(ValueError):
             check_version_from_init(init_file=initf, min_version="10.0.0")
+
+    def test_cmd_version(self):
+        """This isnt a great test, as it has to be changed when I
+        """
+        # samtools_verison = check_version_from_cmd(
+        #     cmd='samtools',
+        #     line=3,
+        #     pattern=r"\s*Version: (?P<version>[^(]+)", where='stderr',
+        #                        min_version="0.0.0")
+        pip_version = check_version_from_cmd(
+            exe='pip3.5',
+            cmd=' --version',
+            line=1,
+            pattern=r"pip (?P<version>[^from]+)",
+            where='stdout',
+            min_version="0.0.0")
+        self.assertTrue(pip_version > '7.0.0')
 
     def test_file_len(self):
         """ test against file of known length

@@ -145,6 +145,56 @@ def check_version_from_init(init_file, min_version="0.0.0"):
         raise e
     return(this_version)
 
+
+def check_version_from_cmd(
+        exe,
+        cmd, line,
+        pattern=r"^__version__ = '(?P<version>[^']+)'$",
+        where='stderr',
+        min_version="0.0.0"):
+    """the guts have been stolen from pyani; returns version
+    from an system call that should return a version string.
+    Hacky, but better than nothing.
+    line arg is 1-indexed
+    .strip() is called on match to remove whitspaces
+    """
+    try:
+        exe_path = shutil.which(exe)
+    except Exception as e:
+        raise e
+    from distutils.version import StrictVersion
+    result = subprocess.run("{0} {1}".format(exe_path, cmd),
+                             # is this a securiy risk?
+                            shell=sys.platform != "win32",
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            check=False)
+    try:
+        if where == 'stderr':
+            printout = result.stderr.decode("utf-8").split("\n")
+        elif where == 'stdout':
+            printout = result.stdout.decode("utf-8").split("\n")
+        else:
+            raise ValueError("where option can only be 'stderr' or 'stdout'")
+    except Exception as e:
+        raise e
+    this_version = None
+    m = re.search(pattern, printout[line - 1])
+    if m:
+        this_version = m.group('version').strip()
+    if this_version is None:
+        raise ValueError("No verison was captured with pattern" +
+                         "{0}".format(pattern))
+    try:
+        if StrictVersion(this_version) < StrictVersion(min_version):
+            raise ValueError("'{0}' version must be greater than {1}".format(
+                cmd, min_version))
+    except Exception as e:
+        raise e
+    return(this_version)
+
+
+
 def make_outdir(path, logger=None):
     """makes a directory if it doesnt exist
     requires os, errno
@@ -227,7 +277,7 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
 
 
 def check_installed_tools(executable, hard=True, logger=None):
-    """given a list of executables (or things that should be in PATH,
+    """given an executables (or things that should be in PATH,
     raise error if executable for a tool is not found
     requires shutil, logger, sys
     """
@@ -445,6 +495,7 @@ def combine_contigs(contigs_dir, pattern="*",
     combine all *ext files in dir, return path to concatenated file
     requires Bio.SeqIO, glob, os
     """
+    # make sure it ends in a path sep
     if contigs_dir[-1] != os.path.sep:
         contigs_dir = str(contigs_dir + os.path.sep)
     output = os.path.join(contigs_dir, str(contigs_name + ext))
