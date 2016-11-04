@@ -159,8 +159,6 @@ def check_version_from_cmd(
     line arg is 1-indexed
     .strip() is called on match to remove whitspaces
     """
-    if logger is None:
-        raise ValueError("Must use logger")
     try:
         exe_path = shutil.which(exe)
     except Exception as e:
@@ -181,7 +179,8 @@ def check_version_from_cmd(
             raise ValueError("where option can only be 'stderr' or 'stdout'")
     except Exception as e:
         raise e
-    logger.debug(printout)
+    if logger:
+        logger.debug(printout)
     this_version = None
     try:
         m = re.search(pattern, printout[line - 1])
@@ -189,10 +188,12 @@ def check_version_from_cmd(
         raise e
     if m:
         this_version = m.group('version').strip()
-    logger.debug("this_version: %s", this_version)
+    if logger:
+        logger.debug("this_version: %s", this_version)
     if coerce_two_digit:
         this_version = "0.{0}".format(this_version)
-        logger.debug("coerced this_version: %s", this_version)
+        if logger:
+            logger.debug("coerced this_version: %s", this_version)
     if this_version is None:
         raise ValueError("No verison was captured with pattern" +
                          "{0}".format(pattern))
