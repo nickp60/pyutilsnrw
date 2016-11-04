@@ -24,6 +24,7 @@ __version__ = "0.0.3"
 import sys
 import os
 import unittest
+import logging
 
 from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
@@ -33,6 +34,7 @@ from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
 
 sys.dont_write_bytecode = True
 
+logger = logging
 
 @unittest.skipIf((sys.version_info[0] != 3) or (sys.version_info[1] < 5),
                  "Subprocess.call among otherthings wont run if you try this" +
@@ -108,6 +110,7 @@ class utils3_5TestCase(unittest.TestCase):
             cmd=' --version',
             line=1,
             pattern=r"pip (?P<version>[^from]+)",
+            logger=logger,
             where='stdout',
             min_version="0.0.0")
         self.assertTrue(pip_version > '7.0.0')
