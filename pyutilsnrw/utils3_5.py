@@ -247,9 +247,7 @@ def copy_file(current_file, dest_dir, name='', overwrite=False, logger=None):
     returns new path
     """
     if not os.path.exists(current_file):
-        if logger:
-            logger.error("{0} is missing".format(current_file))
-            sys.exit(1)
+        raise FileNotFoundError("{0} is missing".format(current_file))
     if isinstance(name, str) and name != "":
         new_file_name = str(name)
     else:

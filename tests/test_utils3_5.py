@@ -36,6 +36,7 @@ sys.dont_write_bytecode = True
 
 logger = logging
 
+
 @unittest.skipIf((sys.version_info[0] != 3) or (sys.version_info[1] < 5),
                  "Subprocess.call among otherthings wont run if you try this" +
                  " with less than python 3.5")
