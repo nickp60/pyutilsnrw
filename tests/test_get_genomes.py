@@ -19,15 +19,6 @@ sys.path.append(os.path.join(
 
 from pyutilsnrw.get_genomes import parse_accession_list, fetch_and_write_seqs
 
-def make_urlcall(acc="LC075482.1"):
-    try:
-        return(Entrez.efetch(db="nucleotide", email='alfredthedaring@gmail.com'
-                             id=acc, rettype="fasta", retmode="text"))
-    except Exception as e:
-        print(e)
-        return(1)
-
-    test = make_urlcall()
 
 class GetGenomesTestCase(unittest.TestCase):
     """Tests for `get_genomes.py`."""
@@ -51,6 +42,7 @@ class GetGenomesTestCase(unittest.TestCase):
         def make_urlcall(acc="LC075482.1"):
             try:
                 return(Entrez.efetch(db="nucleotide",
+                                     email="alfredthedaring@gmail.com",
                                      id=acc, rettype="fasta", retmode="text"))
             except Exception as e:
                 print(e)
