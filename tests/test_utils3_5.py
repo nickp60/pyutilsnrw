@@ -91,10 +91,11 @@ class utils3_5TestCase(unittest.TestCase):
             os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
             "pyutilsnrw", "__init__.py")
         print(initf)
-        self.assertTrue(isinstance(
-            check_version_from_init(init_file=initf, min_version="0.0.0"), str))
+        self.assertTrue(isinstance(check_version_from_init(
+            init_file=initf, min_version="0.0.0"), str))
         with self.assertRaises(FileNotFoundError):
-            check_version_from_init(init_file="notheinitfile", min_version="0.0.0")
+            check_version_from_init(
+                init_file="notheinitfile", min_version="0.0.0")
         with self.assertRaises(ValueError):
             check_version_from_init(init_file=initf, min_version="10.0.0")
 
@@ -107,7 +108,7 @@ class utils3_5TestCase(unittest.TestCase):
         #     pattern=r"\s*Version: (?P<version>[^(]+)", where='stderr',
         #                        min_version="0.0.0")
         pip_version = check_version_from_cmd(
-            exe='pip3.5',
+            exe='pip',
             cmd=' --version',
             line=1,
             pattern=r"pip (?P<version>[^from]+)",
