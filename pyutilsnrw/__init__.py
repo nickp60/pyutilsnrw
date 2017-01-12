@@ -1,3 +1,3 @@
 ##  Package version
 # use single quotes to surround version
-__version__ = '0.0.769'
+__version__ = '0.0.7691'
