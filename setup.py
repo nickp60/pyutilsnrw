@@ -95,7 +95,7 @@ setup(
 
     # Alternatively, if you want to distribute just a my_module.py, uncomment
     # this:
-    #   py_modules=["my_module"],
+      py_modules=["pyutilsnrw/utils3_5.py"],
 
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's
