@@ -25,6 +25,8 @@ import sys
 import os
 import unittest
 import logging
+import shutil
+
 
 from pyutilsnrw.utils3_5 import make_output_prefix, check_installed_tools,\
     copy_file, get_ave_read_len_from_fastq, get_number_mapped,\
