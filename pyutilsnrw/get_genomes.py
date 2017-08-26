@@ -48,9 +48,19 @@ def get_args(DEBUG=False):
     parser.add_argument("-e", "--email", action="store", dest="email",
                         help="email address",
                         default='joe_smith@mail.gov', type=str)
-    parser.add_argument("--concat", action="store_true", dest="concat", default=False,
+    parser.add_argument("-d", "--database", action="store", dest="db",
+                        choices=["protein", "nucleotide"],
+                        help="which NCBI database to use",
+                        default='nucleotide', type=str)
+    parser.add_argument("-r", "--region", action="store", dest="region",
+                        help="region in the format of 'start:end', or" +
+                        "532:1010.  Only used in quick mode",
+                        default=None, type=str)
+    parser.add_argument("--concat", action="store_true", dest="concat",
+                        default=False,
                         help="output as single file; default: %(default)s")
-    parser.add_argument("--DEBUG", action="store_true", dest="DEBUG", default=False,
+    parser.add_argument("--DEBUG", action="store_true", dest="DEBUG",
+                        default=False,
                         help="DEBUG mode for testing; default: %(default)s")
     args = parser.parse_args()
     if args.DEBUG:  # ie, if running debug from cline
@@ -65,11 +75,12 @@ def parse_accession_list(pathtofile):
     for line in open(pathtofile):
         li = line.strip()
         if not li.startswith("#"):
-            accessions.append(line.split("#")[0].strip()) # allow for comments
+            accessions.append(line.split("#")[0].strip())  # allow for comments
     return(accessions)
 
 
-def fetch_and_write_seqs(accessions, destination, outfmt='fasta', concat=False):
+def fetch_and_write_seqs(accessions, destination, region, db='nucleotide',
+                         outfmt='fasta', concat=False):
     """
     now should be able to detect and handle ftp calls to NCBI only
     takes an accession list
@@ -77,6 +88,8 @@ def fetch_and_write_seqs(accessions, destination, outfmt='fasta', concat=False):
     rest of the items. if not, the files will be fetched from entrex and if
     concat, smooshed into one file. Returns 0 if succesful
     """
+    if len(accessions) > 1 and region:
+        print("region will be ignored when using multiple accessions!")
     if outfmt == 'fasta':
         ftpsuf = "_genomic.fna.gz"  # ftp suffix
         rettype = 'fasta'
@@ -111,16 +124,33 @@ def fetch_and_write_seqs(accessions, destination, outfmt='fasta', concat=False):
             print("fetching %s as genomic %s" % (i, outfmt))
             out_handle = open(str(destination.strip() + datetimetag +
                                   "get_genomes_result." + outfmt), "a")
-            sequence_handle = Entrez.efetch(db="nucleotide", id=i, rettype=rettype, retmode="text")
+            sequence_handle = Entrez.efetch(db=db, id=i, rettype=rettype, retmode="text")
             for line in sequence_handle:
                 out_handle.write(line)
             out_handle.close()
             sequence_handle.close()
     else:
         for i in accessions:
-            print("fetching %s as %s" % (i, outfmt))
-            out_handle = open(str(destination.strip() + i + "." + outfmt), "w")
-            sequence_handle = Entrez.efetch(db="nucleotide", id=i, rettype=rettype, retmode="text")
+            if region:
+                if len(region.strip().split(":")) != 2:
+                    print("Region must be two colon-sparated integers!")
+                    sys.exit(1)
+                reg_start, reg_end = region.strip().split(":")
+                print("fetching %s from %s to %s as %s" % (
+                    i, reg_start, reg_end, outfmt))
+                out_handle = open(str(destination.strip() +
+                                      i + "." + outfmt), "w")
+                sequence_handle = Entrez.efetch(
+                    db=db, id=i, rettype=rettype,
+                    retmode="text",
+                    seq_start=reg_start,
+                    seq_stop=reg_end)
+            else:
+                print("fetching %s as %s" % (i, outfmt))
+                out_handle = open(str(destination.strip() +
+                                      i + "." + outfmt), "w")
+                sequence_handle = Entrez.efetch(
+                    db=db, id=i, rettype=rettype, retmode="text")
             for line in sequence_handle:
                 out_handle.write(line)
             out_handle.close()
@@ -142,6 +172,7 @@ if __name__ == '__main__':
         accession_list = [args.quick_fetch]
     else:
         accession_list = parse_accession_list(args.inputlist)
-    outputpath = fetch_and_write_seqs(accession_list,  output_dir_path,
+    outputpath = fetch_and_write_seqs(accession_list, output_dir_path,
+                                      db=args.db, region=args.region,
                                       outfmt=args.outfmt, concat=args.concat)
     print("Outputting results to %s" % (output_dir_path))

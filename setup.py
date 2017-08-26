@@ -31,7 +31,7 @@ with open(path.join(here, 'pyutilsnrw', '__init__.py')) as fh:
             break
 
 if sys.version_info <= (3, 0):
-    sys.stderr.write("ERROR: riboseed requires Python 3.5 " +
+    sys.stderr.write("ERROR: pyutilsnrw requires Python 3.5 " +
                      "or above...exiting.\n")
     sys.exit(1)
 

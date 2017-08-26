@@ -110,7 +110,7 @@ def set_up_logging(verbosity, outfile, name):
     except:
         logger.error("Could not open {0} for logging".format(outfile))
         sys.exit(1)
-    logger.info("Initializing logger")
+    logger.debug("Initializing logger")
     logger.debug("logging at level {0}".format(verbosity))
     return logger
 
@@ -514,7 +514,7 @@ def combine_contigs(contigs_dir, pattern="*",
         print(str("combining the following files matching pattern " +
                   "{0}:{1}".format(pattern, " ".join(fastas))))
     if logger:
-        logger.info(str("combining the following files matching pattern " +
+        logger.debug(str("combining the following files matching pattern " +
                         "{0}:{1}".format(pattern, " ".join(fastas))))
     if len(fastas) == 0:
         if logger:

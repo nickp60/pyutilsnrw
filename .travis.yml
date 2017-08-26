@@ -3,23 +3,23 @@ python:
 - '3.5'
 - '3.6'
 before install:
-- sudo apt-get -qq update
-- sudo apt-get install -y samtools
 - echo "$PATH"
-- echo "which samtools"
 install:
 - pip install coveralls
 - pip install -r requirements.txt
 script:
-- "./install_samtools.sh"
-- "./debug_travis.sh"
 - python setup.py install
 - nosetests --with-coverage --cover-package=pyutilsnrw tests/
 after_success: coveralls
 deploy:
-  provider: pypi
- #server: https://mypackageindex.com/index
-  user: NickWaters
-  password: itsablunderfullife
-  on:
-    tags: true
+  - provider: pypi
+    user: NickWaters
+    server: https://test.pypi.org/legacy/
+    password:
+      secure: "LgVG8zTZna/czMcTsAEC13WPxlH49CEmuftBarf76Nf0b0P0xH0yvFWhqmALJ7VFxIxO4jck8CaO6QVeOFJAytz3ubsEkjuDcZbRITtFfKCBOB7C7xU9kp9WZIYX3DK6ZT7GCt2iy1Z8QDOThgKqDz41EHHWrUIduW/zLMVw0hLjLnn1PVYpB0hUp1KMruxsvennLoLHLEaGRe30cPwudFx0QBtdIM7Jz7ZlkmVYVRrjfT/6NJcPnyuUWvfATDa/IUXpBXwMD5cuJZLRBzAlrZsRENH+CxCnHllD9zkFe+2efjysZKIMTvUfh+gp4T1G1ECDQ752TcE1NhKi+XshgBEIL1Prr4AIaArB35EyueJpDXlR4Zwxa9HcdNW5YQL+k2ia6AeYwosSh/9yx7ElQf8l7p2ZPSu8nHreyydJt/xdsSqvarJrGWf38OXzN31qAyXz0zUqr/+GVeHbn/tRKNxRgN9lcarGO9k71s7qdQbOjMZ/6hYkLt1qHDTBaXdCzkcShUE58RzdJVv6uzyz1N0UdJNj54emDwiGDfF6VMmYdbZF5cgmFb5SUdUhKNVSwQRbkRzvCP7ommakuBhP7nQj4A6LzPfh2uk49wLRPw29WLsH9UepzEq066kHhmK+3z2j9nntdS7wBcuXUjEn+rWWev4IX5TZPV+JAk45zJk="
+  - provider: pypi
+    user: NickWaters
+    password:
+      secure: "fQtYztOLcXbGT4gFTeDHt6Dt+BYJqP3+kBucfEy7Cl/m49OPvzvu9X1boAYkjOd8sGAfB6iVRBcnJ4Su0xzCfuEp+KxhgYE05OCtFvkeamhSfA/p02o4r3E6DjvgcE0pI71nXQ+7syx6A7yUAuSTNhz/4UtzPV2y1UA62LTrcTIhMSVndT80MJ3UOddUKxmVxNCqoOL2j+jRskIxJHdHfAEj6Z/Ol3pUaYHtvRLPvNyt2xKpoHJOprtySE+t3b+Id+WdvB4A2RwN1Tbsl0TcdohQq8zY4WwXiFop57smOKWRWZPeuKgkftYcSXBT6uy8nX3qku+7IHlkNygUQIMWnZTwpw7IZJU1FR0yjEooB56ofy8Npl+RoJwY2J+r6LJAGyazsKXJUAUKk6PjeqtTYYdZseirG920ChtMqA9wCh0bhGuVi4PpoadxdIQj/Fp0EPhKwFT5mIbcjB2sJ9a5U1HTon1TwewbjOAPGwsooIkVZhYOlTUzE1vG7jFEWps0XTY3JDd7ws5EKfZOAXPD3EZiyb+gB4IXwr534CZJvtmqmRU74Q7b8CCaSF0cmqNK1WbY0AEr+iRfE8BOVMcbeBJVa8j7BEnpwGxkikiIwcP2QJOdqzuQPa0cuLapK2SPgmFp747P5//Jy1X6xwFu3um9RfqFReAw/xJZaXirwRg="
+    on:
+      tags: true
