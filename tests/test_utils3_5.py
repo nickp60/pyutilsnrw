@@ -226,6 +226,10 @@ class utils3_5TestCase(unittest.TestCase):
         mean_read_len = get_ave_read_len_from_fastq(self.test_fastq_file, N=5)
         self.assertEqual(217.8, mean_read_len)
 
+    @unittest.skipIf(shutil.which("samtools") is None,
+                     "samtools executable not found, skipping." +
+                     "If this isnt an error from travis deployment, you " +
+                     "probably should install it")
     def test_get_number_mapped(self):
         """ checks flagstat
         """
@@ -233,6 +237,10 @@ class utils3_5TestCase(unittest.TestCase):
         reference = "151 + 0 mapped (0.56% : N/A)"
         self.assertEqual(result, reference)
 
+    @unittest.skipIf(shutil.which("samtools") is None,
+                     "samtools executable not found, skipping." +
+                     "If this isnt an error from travis deployment, you " +
+                     "probably should install it")
     def test_extraction(self):
         """ tests extract_mapped_and_mappedmates
         dont trust this if  make_output_prefix test fails
