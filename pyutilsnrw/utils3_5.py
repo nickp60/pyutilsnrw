@@ -161,6 +161,7 @@ def check_version_from_cmd(
     20170920 changed to remove shutil.which call.
     That should be done outside of this funciton
     """
+    assert logger is not None, "must use logging"
     from distutils.version import StrictVersion
     result = subprocess.run("{0} {1}".format(exe, cmd),
                              # is this a securiy risk?

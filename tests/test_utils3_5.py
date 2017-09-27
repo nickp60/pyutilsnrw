@@ -114,7 +114,7 @@ class utils3_5TestCase(unittest.TestCase):
             cmd=' --version',
             line=1,
             pattern=r"pip (?P<version>[^from]+)",
-            # logger=logger,
+            logger=logger,
             where='stdout',
             min_version="0.0.0")
         self.assertTrue(pip_version > '7.0.0')
