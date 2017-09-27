@@ -158,18 +158,17 @@ def check_version_from_cmd(
     Hacky, but better than nothing.
     line arg is 1-indexed
     .strip() is called on match to remove whitspaces
+    20170920 changed to remove shutil.which call.
+    That should be done outside of this funciton
     """
-    try:
-        exe_path = shutil.which(exe)
-    except Exception as e:
-        raise e
     from distutils.version import StrictVersion
-    result = subprocess.run("{0} {1}".format(exe_path, cmd),
+    result = subprocess.run("{0} {1}".format(exe, cmd),
                              # is this a securiy risk?
                             shell=sys.platform != "win32",
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE,
                             check=False)
+    logger.debug(result)
     try:
         if where == 'stderr':
             printout = result.stderr.decode("utf-8").split("\n")
